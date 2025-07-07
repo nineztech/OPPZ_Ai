@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href='formControl.css'>
+    <title>Auto Apply - Form Control</title>
+</head>
+<body>
+    <div class="container">
+        <div class="column">
+            <h2 class='default-input-header'>Required Personal Info</h2>
+            
+            <!-- Sync Button -->
+            <button id="sync-button" class="sync-button">
+                🔄 Sync with Website Data
+            </button>
+            
+            <!-- Status Message -->
+            <div id="status-message" class='default-input-sub-header'>
+                Please fill out the missing values:
+            </div>
+            
+            <!-- Progress Indicator -->
+            <div class="progress-indicator" id="progress-indicator">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="progress-text">0/6 fields completed</span>
+                    <span id="sync-status" style="font-size: 12px; color: #666;"></span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+            
+            <!-- Input Fields -->
+            <section id="default-input-fields"></section>
+            
+            <!-- Sync Information -->
+            <div id="sync-info-panel" style="display: none; margin-top: 15px; padding: 10px; background-color: #f0f8ff; border-radius: 4px; border: 1px solid #0066cc;">
+                <h4 style="margin: 0 0 10px 0; color: #0066cc;">Website Data Sync</h4>
+                <div id="sync-details"></div>
+            </div>
+        </div>
+        
+        <div class="column">
+            <h2>Text Fields Entry</h2>
+            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                Fields detected from website forms will appear here. Values will automatically sync with your personal info above.
+            </p>
+            <div id="configurations"></div>
+        </div>
+        
+        <div class="column">
+            <h2>Radio Buttons Entry</h2>
+            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                Radio button selections from website forms.
+            </p>
+            <div id="radio"></div>
+        </div>
+        
+        <div class="column">
+            <h2>Dropdowns Entry</h2>
+            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                Dropdown selections from website forms.
+            </p>
+            <div id="dropdown"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Enhanced JavaScript for the form control
+        
+        // Field mapping for display
+        const fieldMapping = {
+            'FirstName': 'First name',
+            'LastName': 'Last name', 
+            'PhoneNumber': 'Mobile phone number',
+            'Email': 'Email',
+            'City': 'City',
+            'YearsOfExperience': 'Years of experience'
+        };
+        
+        // Reverse mapping
+        const reverseFieldMapping = {
+            'First name': 'FirstName',
+            'Last name': 'LastName',
+            'Mobile phone number': 'PhoneNumber',
+            'Phone number': 'PhoneNumber',
+            'Email': 'Email',
+            'City': 'City',
+            'Years of experience': 'YearsOfExperience',
+            'Experience': 'YearsOfExperience'
+        };
+        
+        // Update progress indicator
+        function updateProgressIndicator() {
+            chrome.storage.local.get(['defaultFields'], function(result) {
+                const defaultFields = result.defaultFields || {};
+                const requiredFields = ['YearsOfExperience', 'FirstName', 'LastName', 'PhoneNumber', 'City', 'Email'];
+                
+                let filledCount = 0;
+                requiredFields.forEach(field => {
+                    if (defaultFields[field] && defaultFields[field].trim()) {
+                        filledCount++;
+                    }
+                });
+                
+                const percentage = (filledCount / requiredFields.length) * 100;
+                
+                document.getElementById('progress-text').textContent = `${filledCount}/${requiredFields.length} fields completed`;
+                document.getElementById('progress-fill').style.width = `${percentage}%`;
+                
+                // Update progress fill color
+                const progressFill = document.getElementById('progress-fill');
+                if (percentage === 100) {
+                    progressFill.style.backgroundColor = '#4caf50';
+                } else if (percentage >= 50) {
+                    progressFill.style.backgroundColor = '#ff9800';
+                } else {
+                    progressFill.style.backgroundColor = '#f44336';
+                }
+            });
+        }
+        
+        // Update sync status
+        function updateSyncStatus() {
+            chrome.storage.local.get(['inputFieldConfigs'], function(result) {
+                const inputFieldConfigs = result.inputFieldConfigs || [];
+                const syncStatus = document.getElementById('sync-status');
+                
+                const syncedFields = inputFieldConfigs.filter(config => 
+                    config.defaultValue && config.defaultValue.trim() !== ''
+                );
+                
+                if (syncedFields.length > 0) {
+                    syncStatus.textContent = `${syncedFields.length} fields synced from website`;
+                    syncStatus.style.color = '#4caf50';
+                } else {
+                    syncStatus.textContent = 'No website data detected';
+                    syncStatus.style.color = '#666';
+                }
+            });
+        }
+        
+        // Show sync information panel
+        function showSyncInfo() {
+            chrome.storage.local.get(['inputFieldConfigs'], function(result) {
+                const inputFieldConfigs = result.inputFieldConfigs || [];
+                const syncPanel = document.getElementById('sync-info-panel');
+                const syncDetails = document.getElementById('sync-details');
+                
+                if (inputFieldConfigs.length > 0) {
+                    syncDetails.innerHTML = '';
+                    inputFieldConfigs.forEach(config => {
+                        const item = document.createElement('div');
+                        item.style.cssText = 'margin-bottom: 5px; font-size: 12px;';
+                        item.innerHTML = `
+                            <strong>${config.placeholderIncludes}:</strong> 
+                            ${config.defaultValue || 'No value'} 
+                            <span style="color: #666;">(used ${config.count || 0} times)</span>
+                        `;
+                        syncDetails.appendChild(item);
+                    });
+                    syncPanel.style.display = 'block';
+                } else {
+                    syncPanel.style.display = 'none';
+                }
+            });
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup sync button
+            const syncButton = document.getElementById('sync-button');
+            syncButton.addEventListener('click', function() {
+                syncButton.textContent = '🔄 Syncing...';
+                syncButton.disabled = true;
+                
+                // Simulate sync process
+                setTimeout(() => {
+                    syncButton.textContent = '🔄 Sync with Website Data';
+                    syncButton.disabled = false;
+                    updateProgressIndicator();
+                    updateSyncStatus();
+                    showSyncInfo();
+                }, 1000);
+            });
+            
+            // Initial updates
+            updateProgressIndicator();
+            updateSyncStatus();
+            showSyncInfo();
+            
+            // Update every 5 seconds
+            setInterval(() => {
+                updateProgressIndicator();
+                updateSyncStatus();
+                showSyncInfo();
+            }, 5000);
+        });
+    </script>
+    
+    <script src='formControl.js'></script>
+</body>
+</html>

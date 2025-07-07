@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saved Job Applications</title>
+  <link rel="stylesheet" href="externalApply.css">
+</head>
+<body>
+  <div class="header">
+    <h1>Saved Job Applications</h1>
+    <div id="links-counter">Total links: <span id="links-count">0</span></div>
+  </div>
+  
+  <div id="controls">
+    <div class="filter-control">
+      <label for="job-filter">Filter by:</label>
+      <select id="job-filter">
+        <option value="all">All Jobs</option>
+        <option value="external">External Applications</option>
+        <option value="auto">Auto-Applied</option>
+      </select>
+    </div>
+    
+    <div class="action-buttons">
+      <button id="remove-all" class="header-buttons">REMOVE ALL</button>
+      <button id="remove-duplicates" class="header-buttons">Remove Duplicates</button>
+      <button id="open-all-links" class="header-buttons">Open All Links</button>
+    </div>
+  </div>
+  
+  <div id="links"></div>
+  
+  <script src="externalApply.js"></script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "OPPZ Ai",
+  "version": "1.0",
+  "description": "Applying for Jobs Made Effortless!",
+  "icons": {
+    "16": "assets/images/256256.png",
+    "48": "assets/images/256256.png",
+    "128": "assets/images/256256.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "assets/images/256256.png",
+      "48": "assets/images/256256.png",
+      "128": "assets/images/256256.png"
+    },
+    "default_popup": "popup/auth/login.html",
+    "default_title": "CONFIGURATION"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.linkedin.com/*"],
+      "js": [
+        "content/utils.js",
+        "content/createElements.js",
+        "content/content.js",
+        "content/xpaths.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "activeTab",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "http://localhost:5006/*",
+    "https://www.linkedin.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "popup/**",
+        "assets/images/*",
+        "modals/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "externally_connectable": {
+    "matches": ["http://localhost:3000/*"]
+  }
+}
