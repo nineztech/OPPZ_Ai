@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Plus, X } from 'lucide-react';
+import { useAuth } from '..//AuthContext';
 
 interface Skill {
   id: string;
@@ -9,16 +10,30 @@ interface Skill {
 }
 
 const SkillsManager: React.FC = () => {
-  const [skills, setSkills] = useState<Skill[]>([
-    { id: '1', name: 'JavaScript', experience: 4, level: 'Intermediate' },
-    { id: '2', name: 'React.js', experience: 3, level: 'Intermediate' },
-    { id: '3', name: 'Node.js', experience: 3, level: 'Intermediate' },
-  ]);
+ const { user } = useAuth();
+  const userEmail = user?.email || 'guest';
+  const storageKey = `skills_${userEmail}`;
 
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newSkill, setNewSkill] = useState({ name: '', experience: 1, level: 'Beginner' as const });
 
-  const getLevelFromExperience = (experience: number): 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert' => {
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        setSkills(JSON.parse(saved));
+      } catch (err) {
+        console.error('Failed to parse saved skills:', err);
+      }
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(skills));
+  }, [skills, storageKey]);
+
+  const getLevelFromExperience = (experience: number): Skill['level'] => {
     if (experience <= 1) return 'Beginner';
     if (experience <= 3) return 'Intermediate';
     if (experience <= 5) return 'Advanced';
@@ -74,7 +89,6 @@ const SkillsManager: React.FC = () => {
     <div className="max-w-4xl mx-auto p-6 bg-gray-100 min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-blue-500 to-purple-600">Skills</h1>
-        
         <button
           onClick={() => setShowAddForm(true)}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
@@ -84,7 +98,6 @@ const SkillsManager: React.FC = () => {
         </button>
       </div>
 
-      {/* Add Skill Form */}
       {showAddForm && (
         <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Add New Skill</h2>
@@ -102,7 +115,7 @@ const SkillsManager: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-100 mb-2">
+              <label className="block text-sm font-medium text-gray-900 mb-2">
                 Experience (Years)
               </label>
               <input
@@ -110,15 +123,15 @@ const SkillsManager: React.FC = () => {
                 min="1"
                 max="20"
                 value={newSkill.experience}
-                onChange={(e) => setNewSkill({ 
-                  ...newSkill, 
-                  experience: parseInt(e.target.value) || 1 
+                onChange={(e) => setNewSkill({
+                  ...newSkill,
+                  experience: parseInt(e.target.value) || 1
                 })}
                 className="w-full bg-gray-200 text-black px-3 py-2 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-100 mb-2">
+              <label className="block text-sm font-medium text-gray-900 mb-2">
                 Level
               </label>
               <div className="bg-gray-200 text-black px-3 py-2 rounded-lg border border-gray-600">
@@ -146,12 +159,11 @@ const SkillsManager: React.FC = () => {
         </div>
       )}
 
-      {/* Skills List */}
       <div className="space-y-4">
         {skills.map((skill) => (
           <div
             key={skill.id}
-            className="bg-white shadow to-purple-600 rounded-lg p-6 border    "
+            className="bg-white shadow rounded-lg p-6 border"
           >
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
@@ -175,7 +187,7 @@ const SkillsManager: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-900">Level:</span>
