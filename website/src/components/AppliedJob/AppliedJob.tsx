@@ -9,7 +9,14 @@ import {
   Bot,
   Download,
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
+} from 'recharts';
+import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
 import classNames from 'classnames';
+dayjs.extend(isBetween);
 
 interface Job {
   id: string;
@@ -29,7 +36,20 @@ interface JobStats {
   thisMonth: number;
 }
 
-const extensionId = 'gkjemnmlpgdngnchlgnhacembojdfnbm'; // Replace with your actual extension ID
+const extensionId = 'hmjkmddeonifkflejbicnapamlfejdim';
+
+const StatCard: React.FC<{
+  label: string;
+  count: number;
+  icon: JSX.Element;
+  color: string;
+}> = ({ label, count, icon, color }) => (
+  <div className={`bg-white p-4 rounded-xl shadow text-center`}>
+    <div className={`text-3xl mb-2 ${color}`}>{icon}</div>
+    <div className="text-2xl font-bold">{count}</div>
+    <div className="text-sm text-gray-600">{label}</div>
+  </div>
+);
 
 const JobApplicationHistory: React.FC = () => {
   const [allJobs, setAllJobs] = useState<Job[]>([]);
@@ -39,6 +59,64 @@ const JobApplicationHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [stats, setStats] = useState<JobStats | null>(null);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [graphRange, setGraphRange] = useState<'thisWeek' | 'lastWeek' | 'thisMonth' | 'max'>('thisWeek');
+
+  const ranges = ['thisWeek', 'lastWeek', 'thisMonth', 'max'] as const;
+  const buttonTextMap: Record<typeof ranges[number], string> = {
+    thisWeek: 'This Week',
+    lastWeek: 'Last Week',
+    thisMonth: 'This Month',
+    max: 'Max',
+  };
+
+  const buildChartData = (jobs: Job[]) => {
+    const today = dayjs();
+    let start: dayjs.Dayjs;
+    let end: dayjs.Dayjs;
+
+    switch (graphRange) {
+      case 'lastWeek':
+        start = today.subtract(1, 'week').startOf('week');
+        end = today.subtract(1, 'week').endOf('week');
+        break;
+      case 'thisMonth':
+        start = today.startOf('month');
+        end = today.endOf('month');
+        break;
+      case 'max':
+        const earliest = Math.min(...jobs.map(j => j.time || 0));
+        start = dayjs(earliest);
+        end = today;
+        break;
+      default:
+        start = today.startOf('week');
+        end = today.endOf('week');
+    }
+
+    const data: Record<string, number> = {};
+    for (let d = start; d.isBefore(end); d = d.add(1, 'day')) {
+      const key = d.format('MMM D');
+      data[key] = 0;
+    }
+
+    jobs.forEach((job) => {
+      const time = job.time;
+      if (!time) return;
+      const appliedDate = dayjs(time);
+      if (appliedDate.isBetween(start, end, null, '[]')) {
+        const key = appliedDate.format('MMM D');
+        data[key] = (data[key] || 0) + 1;
+      }
+    });
+
+    const chartArray = Object.entries(data).map(([date, count]) => ({
+      date,
+      count,
+    }));
+
+    setChartData(chartArray);
+  };
 
   const loadJobData = async () => {
     setLoading(true);
@@ -94,31 +172,6 @@ const JobApplicationHistory: React.FC = () => {
     }
   };
 
-  const exportData = async () => {
-    try {
-      const response: any = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage(
-          extensionId,
-          { from: 'website', action: 'exportJobData' },
-          (res) => {
-            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-            else resolve(res);
-          }
-        );
-      });
-
-      if (response?.success) {
-        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(response.data, null, 2));
-        const dlAnchor = document.createElement('a');
-        dlAnchor.setAttribute('href', dataStr);
-        dlAnchor.setAttribute('download', `job_export_${Date.now()}.json`);
-        dlAnchor.click();
-      }
-    } catch (err) {
-      alert('Failed to export job data.');
-    }
-  };
-
   const updateFilter = () => {
     let jobs = [...allJobs];
     if (filter === 'external') {
@@ -163,6 +216,92 @@ const JobApplicationHistory: React.FC = () => {
     }
   };
 
+  const exportData = async () => {
+    try {
+      const response: any = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          extensionId,
+          { from: 'website', action: 'exportJobData' },
+          (res) => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve(res);
+          }
+        );
+      });
+
+      if (!response?.success || !response.data) {
+        alert('❌ No job data returned from extension.');
+        return;
+      }
+
+      const rawJobs = Array.isArray(response.data)
+        ? response.data
+        : Object.values(response.data);
+
+      const jobs = rawJobs
+        .map((item: any, index: number) => {
+          if (typeof item === 'string') {
+            try {
+              return JSON.parse(item);
+            } catch {
+              return null;
+            }
+          }
+          return item;
+        })
+        .filter(Boolean);
+
+      if (jobs.length === 0) {
+        alert('⚠️ No valid job data to export.');
+        return;
+      }
+
+      const doc = new jsPDF();
+      doc.setFontSize(12);
+      let y = 10;
+
+      jobs.forEach((job: any, idx: number) => {
+        const id = job.id || job.jobId || '-';
+        const company = job.company || job.companyName || '-';
+        const date = job.appliedDate
+          ? new Date(job.appliedDate).toLocaleString()
+          : '-';
+        const title = job.title || 'Untitled';
+        const link = job.link || '-';
+        const status = job.status || 'N/A';
+
+        doc.text(`Job #${idx + 1}`, 10, y);
+        y += 6;
+        doc.text(`ID: ${id}`, 10, y);
+        y += 6;
+        doc.text(`Company: ${company}`, 10, y);
+        y += 6;
+        doc.text(`Applied: ${date}`, 10, y);
+        y += 6;
+        doc.text(`Title: ${title}`, 10, y);
+        y += 6;
+        doc.text(`Status: ${status}`, 10, y);
+        y += 6;
+        doc.text(`Link: ${link}`, 10, y);
+        y += 10;
+
+        if (y > 270) {
+          doc.addPage();
+          y = 10;
+        }
+      });
+
+      doc.save(`job_export_${Date.now()}.pdf`);
+    } catch (err: any) {
+      alert(`❌ Failed to export job data.\nError: ${err.message || err}`);
+    }
+  };
+
+  const formatDate = (time?: number) => {
+    if (!time) return 'Unknown';
+    return new Date(time).toLocaleString();
+  };
+
   useEffect(() => {
     loadJobData();
   }, []);
@@ -171,14 +310,47 @@ const JobApplicationHistory: React.FC = () => {
     updateFilter();
   }, [filter, search, allJobs]);
 
-  const formatDate = (time?: number) => {
-    if (!time) return 'Unknown';
-    const date = new Date(time);
-    return date.toLocaleString();
-  };
+  useEffect(() => {
+    buildChartData(allJobs);
+  }, [graphRange, allJobs]);
+
+const StatCard = ({
+  label,
+  count,
+  icon,
+  color,
+  description,
+  percentage,
+}: {
+  label: string;
+  count: number;
+  icon: JSX.Element;
+  color: string;
+  description?: string;
+  percentage?: number;
+}) => (
+  <div className="bg-white p-4 rounded-xl shadow text-center">
+    <div className={`text-4xl mb-2 flex justify-center ${color}`}>{icon}</div>
+    <div className="text-xl font-bold">{label}</div>
+    <div className="text-3xl font-extrabold">{count}</div>
+
+    {percentage !== undefined && (
+      <div className="text-sm text-gray-500 mt-1">
+        {percentage}% of total
+      </div>
+    )}
+
+    {description && (
+      <div className="text-xs text-gray-400 mt-2">
+        {description}
+      </div>
+    )}
+  </div>
+);
+
 
   return (
-    <div className="p-4 md:p-8 bg-gradient-to-br from-indigo-600 to-purple-800 min-h-screen">
+    <div className="p-4 md:p-4 ml-6 bg-[#f4ffee] min-h-screen">
       <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div className="text-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white py-8">
           <h1 className="text-3xl font-bold flex justify-center items-center gap-2">
@@ -188,32 +360,61 @@ const JobApplicationHistory: React.FC = () => {
         </div>
 
         {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-100 p-6">
-            <StatCard label="Total" count={stats.total} icon={<ChartBar className="w-35 h-35"/>} color="text-indigo-600" />
-            {/* <StatCard label="External" count={stats.external} icon={<ExternalLink />} color="text-green-600" /> */}
-            <StatCard label="Auto" count={stats.auto} icon={<Bot className="w-35 h-35"/>} color="text-green-600" />
-          </div>
-        )}
+         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-100 p-6">
+           <StatCard
+  label="Total Applications"
+  count={stats.total}
+  icon={<ChartBar className="w-10 h-10" />}
+  color="text-indigo-600"
+  description="All jobs tracked so far"
+  percentage={100}
+/>
 
+<StatCard
+  label="Today Applied"
+  count={stats.auto}
+  icon={<Bot className="w-10 h-10 animate-bounce" />} // animate icon for visual distinction
+  color="text-green-600"
+  description={`Handled by OPPZ Bot. That's ${Math.round((stats.auto / stats.total) * 100)}% of all.`}
+  percentage={Math.round((stats.auto / stats.total) * 100)}
+/>
+
+
+        <div className="px-6 py-4 w-[205%]">
+          <div className="flex space-x-2 mb-2">
+            {ranges.map((range) => (
+              <button
+                key={range}
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  graphRange === range ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : 'bg-white text-gray-900'
+                }`}
+                onClick={() => setGraphRange(range)}
+              >
+                {buttonTextMap[range]}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600  p-4 rounded-xl">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData}>
+                <XAxis dataKey="date" stroke="white" />
+                <YAxis stroke="white" />
+                {/* <Tooltip contentStyle={{ height:'23px',width: '52px', borderColor: '#4b5563' }} /> */}
+                <Bar dataKey="count" fill="white" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+</div>
+        )}
         <div className="p-6 border-b border-gray-200 flex flex-wrap gap-4 justify-between items-center">
-          {/* <div className="flex gap-4 items-center">
-            <label className="font-semibold">Filter:</label> 
-             <select
-              className="border rounded px-3 py-2"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as any)}
-            >
-              <option value="all">All Jobs</option>
-              <option value="external">External Only</option>
-              <option value="auto">Auto Only</option>
-            </select>
-          </div> */}
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-4 w-[40%] items-center">
             <label className="font-semibold">Search:</label>
             <input
               type="text"
-              className="border rounded px-3 py-2"
-              placeholder="Search by title or company"
+              className="border w-full rounded px-3 py-2"
+              placeholder="Search by Job title or Company name"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -251,7 +452,7 @@ const JobApplicationHistory: React.FC = () => {
               <p>No job applications match your current filters.</p>
             </div>
           ) : (
-            <div className="space-y-4  ">
+            <div className="space-y-4">
               {filteredJobs.map((job) => (
                 <div
                   key={job.id}
@@ -269,6 +470,7 @@ const JobApplicationHistory: React.FC = () => {
                         <a
                           href={job.link}
                           target="_blank"
+                          rel="noreferrer"
                           className="bg-indigo-500 text-white px-3 py-1 rounded text-sm hover:bg-indigo-600"
                         >
                           <ExternalLink className="inline w-4 h-4 mr-1" /> View
@@ -301,18 +503,5 @@ const JobApplicationHistory: React.FC = () => {
     </div>
   );
 };
-
-const StatCard: React.FC<{
-  label: string;
-  count: number;
-  icon: JSX.Element;
-  color: string;
-}> = ({ label, count, icon, color }) => (
-  <div className={`bg-white p-4 rounded-xl shadow text-center ${color}`}>
-    <div className="text-3xl mb-2">{icon}</div>
-    <div className="text-2xl font-bold">{count}</div>
-    <div className="text-sm text-gray-600">{label}</div>
-  </div>
-);
 
 export default JobApplicationHistory;

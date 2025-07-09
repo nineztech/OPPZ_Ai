@@ -1327,7 +1327,7 @@ function showFullNotification(notificationType, isAuthenticated, isJobPage) {
         config = {
             type: 'job-ready',
             title: 'Auto Apply Ready!',
-            message: 'Auto-apply feature is ready for this job',
+            message: 'Auto-apply feature ready for this job',
             actionText: 'Start Auto Apply',
             actionCallback: () => openExtensionAction('auto-apply')
         };

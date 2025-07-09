@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Check, Upload, User, Save } from 'lucide-react';
+import { Check,FileText, UserCog,Upload, User, Save } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
+import FilterSettingsConfigs  from './FilterSettingsConfig';
+import SkillsManager from './Skills';
+import ExperienceManager from './Experiance';
+
 
 interface ProfileData {
   firstName: string;
@@ -14,6 +18,7 @@ interface ProfileData {
   currentSalary: string;
   expectedSalary: string;
   gender: string;
+  military: string;
   citizenship: string;
   age: string;
   noticePeriod: string;
@@ -30,6 +35,7 @@ const initialState: ProfileData = {
   currentSalary: '',
   expectedSalary: '',
   gender: '',
+  military:'',
   citizenship: '',
   age: '',
   noticePeriod: '',
@@ -228,6 +234,8 @@ const ProfileBuilder: React.FC = () => {
       }
     }
   };
+      
+  
 
   const handleNavigate = () => {
     if (!isProfileComplete()) {
@@ -236,6 +244,7 @@ const ProfileBuilder: React.FC = () => {
     }
     navigate('/another-page');
   };
+const [activeTab, setActiveTab] = useState('Personal Details');
 
   // Calculate completion status for UI
   const requiredFieldsFilled = requiredFields.every(field => {
@@ -243,165 +252,216 @@ const ProfileBuilder: React.FC = () => {
     return isFieldFilled(value);
   });
   
+const calculateGrowthExpectation = (current: string, expected: string) => {
+    const currentNum = parseInt(current.replace(/[^\d]/g, ''));
+    const expectedNum = parseInt(expected.replace(/[^\d]/g, ''));
+    if (currentNum > 0) {
+      return Math.round(((expectedNum - currentNum) / currentNum) * 100);
+    }
+    return 0;
+  };
+
   const resumeUploaded = !!resumeFile;
   const allComplete = isProfileComplete();
 
   return (
-    <div className="min-h-screen rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex">
+    <div className="min-h-screen rounded-xl  p-4 -mt-8 flex">
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-2xl backdrop-blur-md p-8">
-            <h1 className="text-3xl font-bold mb-8 text-black">Build Your Profile</h1>
+          <div className="bg-white rounded-2xl shadow-2xl backdrop-blur-md ">
+          <div className="text-center bg-gradient-to-br from-indigo-500 to-purple-600 rounded-t-2xl text-white py-8">
+          <h1 className="text-3xl ml-8 font-bold flex justify-center items-center gap-2">
+            <UserCog className="w-10 h-10" /> Shape Your Job Profile
+          </h1>
+          <p className="text-sm justify-center items-center ml-8">Customize and optimize your job application preferences to match your dream role.</p>
 
-            {/* Debug info */}
+
+</div>
+
+
+         {/* Tabs */}
+        <div className="mb-6 border-b border-gray-200 m-8">
+          <div className="flex space-x-6">
+            {['Personal Details', 'Exclusions', 'Skills', 'Experience'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 font-semibold transition-all ${
+                  activeTab === tab
+                    ? 'border-b-2 border-blue-500 text-blue-700'
+                    : 'text-gray-600 hover:text-blue-500'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+            {/* Debug info
             <div className="mb-4 p-3 text-white bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-sm">
               <strong>Debug Info:</strong><br/>
               Required Fields Filled: {requiredFieldsFilled ? '✅' : '❌'}<br/>
               Resume Uploaded: {resumeUploaded ? '✅' : '❌'}<br/>
               Profile Submitted: {isSubmitted ? '✅' : '❌'}<br/>
               Profile Complete: {allComplete ? '✅' : '❌'}
-            </div>
+            </div> */}
+             {activeTab === 'Personal Details' && (
+              <div className="p-6 space-y-6">
+                {/* Resume Upload */}
+                 
+                  {!resumeFile ? (
+                    <>
+                    <div className="p-6 border rounded-xl border-blue-900 border-dashed">
+                      <Upload className="w-12 h-12 text-blue-900 mx-auto mb-4" />
+                      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileUpload} className="hidden" id="resume-upload" />
+                      <label htmlFor="resume-upload" className="cursor-pointer text-blue-400 hover:text-blue-900 font-medium text-center block">
+                        Click to upload your resume
+                      </label>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between bg-gradient-to-r from-indigo-800 to-purple-800 p-4 rounded-xl text-white">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-green-500 rounded-full w-6 h-6 flex items-center justify-center">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{resumeFile}</p>
+                          <p className="text-sm text-blue-200">PDF Document • Uploaded successfully</p>
+                        </div>
+                      </div>
+                      <label htmlFor="resume-upload" className="cursor-pointer">
+                        <Upload className="w-5 h-5 opacity-60 hover:opacity-100" />
+                      </label>
+                      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileUpload} className="hidden" id="resume-upload" />
+                    </div>
+                  )}
+                
 
-            <div className="mb-8 p-6 bg-white/5 rounded-xl border border-white/10">
-              <h3 className="text-lg font-semibold text-black mb-4">Upload Resume *</h3>
-              <div className="border-2 border-dashed border-blue-900 rounded-lg p-8 text-center">
-                <Upload className="w-12 h-12 text-blue-900 mx-auto mb-4" />
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="resume-upload"
-                />
-                <label
-                  htmlFor="resume-upload"
-                  className="cursor-pointer text-blue-400 hover:text-blue-900 font-medium"
-                >
-                  Click to upload your resume
-                </label>
-                {resumeFile && (
-                  <p className="text-green-600 text-sm mt-2">✓ {resumeFile} uploaded</p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {[...Array.from(Object.entries({
-                  firstName: 'First Name',
-                  lastName: 'Last Name',
-                  email: 'Email',
-                  experience: 'Experience (Years)',
-                  city: 'City',
-                  currentSalary: 'Current Salary',
-                  expectedSalary: 'Expected Salary',
-                  age: 'Age',
-                  noticePeriod: 'Notice Period (Days)',
-                }))].map(([name, label]) => {
-                  const isRequired = requiredFields.includes(name);
-                  
-                  return (
-                    <div key={name} className="flex flex-col">
-                      <label htmlFor={name} className="mb-2 text-sm font-medium text-black">
-                        {label} {isRequired && <span className="text-red-400">*</span>}
+                {/* Input Fields */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {['firstName', 'lastName', 'email', 'experience', 'city', 'age', 'noticePeriod'].map((field) => (
+                    <div key={field} className="flex flex-col">
+                      <label className="mb-2 text-sm font-medium text-black">
+                        {field === 'experience' ? 'Experience (Years)' : field === 'noticePeriod' ? 'Notice Period (In Days)' : field.charAt(0).toUpperCase() + field.slice(1)}{' '}
+                        {requiredFields.includes(field) && <span className="text-red-400">*</span>}
                       </label>
                       <input
-                        id={name}
-                        name={name}
-                        type={name === 'email' ? 'email' : 'text'}
-                        value={(data as any)[name]}
+                        id={field}
+                        name={field}
+                        type={field === 'email' ? 'email' : 'text'}
+                        value={data[field as keyof ProfileData]}
                         onChange={handleChange}
                         className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black"
-                        required={isRequired}
                       />
                     </div>
-                  );
-                })}
+                  ))}
 
-                <div className="flex flex-col">
-                  <label htmlFor="phone" className="mb-2 text-sm font-medium text-black">
-                    Phone <span className="text-red-400">*</span>
-                  </label>
-                  <PhoneInput
-                    country={'us'}
-                    value={data.phone}
-                    onChange={(phone) => setData(prev => ({ ...prev, phone }))}
-                    inputStyle={{
-                      width: '100%',
-                      height: '48px',
-                      borderRadius: '8px',
-                      border: '1px solid #00000055',
-                      paddingLeft: '48px',
-                    }}
-                    containerStyle={{ width: '100%' }}
-                  />
+                  <div className="flex flex-col">
+                    <label className="mb-2 text-sm font-medium text-black">Phone <span className="text-red-400">*</span></label>
+                    <PhoneInput
+                      country={'us'}
+                      value={data.phone}
+                      onChange={(phone) => setData(prev => ({ ...prev, phone }))}
+                      inputStyle={{ width: '100%', height: '48px', borderRadius: '8px', border: '1px solid #00000055', paddingLeft: '48px' }}
+                      containerStyle={{ width: '100%' }}
+                    />
+                  </div>
                 </div>
 
-                <div className="flex flex-col">
-                  <label htmlFor="gender" className="mb-2 text-sm font-medium text-black">Gender</label>
-                  <select
-                    name="gender"
-                    value={data.gender}
-                    onChange={handleChange}
-                    className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+                {/* Salaries + Growth Expectation */}
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {['currentSalary', 'expectedSalary'].map((field) => (
+                    <div key={field} className="flex-1 flex flex-col">
+                      <label className="mb-2 text-sm font-medium text-black">
+                        {field === 'currentSalary' ? 'Current Salary' : 'Expected Salary'} <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name={field}
+                        value={data[field as keyof ProfileData]}
+                        onChange={handleChange}
+                        className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black"
+                      />
+                    </div>
+                  ))}
+                  <div className="w-20 h-12 rounded-xl bg-orange-200 flex flex-col items-center justify-center shadow text-orange-600 font-semibold text-xs text-center p-2 mt-[30px]">
+                     <span className="text-xs text-orange-800 font-medium">Growth EX.</span>
+  
+                     <span className="text-xl font-bold">
+                      {calculateGrowthExpectation(data.currentSalary, data.expectedSalary)}%
+                     </span>
+                  </div>
+
                 </div>
 
-                <div className="flex flex-col">
-                  <label htmlFor="citizenship" className="mb-2 text-sm font-medium text-black">Citizenship</label>
-                  <select
-                    name="citizenship"
-                    value={data.citizenship}
-                    onChange={handleChange}
-                    className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black"
-                  >
-                    <option value="">Select citizenship status</option>
-                    <option value="citizen">Citizen</option>
-                    <option value="visa">Visa</option>
-                    <option value="permanent-resident">Permanent Resident</option>
-                  </select>
+                {/* Gender + Citizenship + Military */}
+                <div className="flex flex-col lg:flex-row gap-6 w-full">
+                  <div className="flex-1 flex flex-col">
+                    <label className="mb-2 text-sm font-medium text-black">Gender</label>
+                    <select name="gender" value={data.gender} onChange={handleChange} className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black">
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="flex-1 flex flex-col">
+                    <label className="mb-2 text-sm font-medium text-black">Citizenship</label>
+                    <select name="citizenship" value={data.citizenship} onChange={handleChange} className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black">
+                      <option value="">Select citizenship status</option>
+                      <option value="citizen">Citizen</option>
+                      <option value="visa">Visa</option>
+                      <option value="permanent-resident">Permanent Resident</option>
+                    </select>
+                  </div>
+
+                  {/* <div className="flex-1 flex flex-col">
+                    <label className="mb-2 text-sm font-medium text-black">Military / Army Status</label>
+                    <select name="military" value={data.military} onChange={handleChange} className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black">
+                      <option value="">Select military status</option>
+                      <option value="Active Duty">Active Duty</option>
+                      <option value="No Military Services">No Military Services</option>
+                      <option value="Reservist">Reservist</option>
+                      <option value="Veteran">Veteran</option>
+                    </select>
+                  </div> */}
                 </div>
+
+                {/* Additional Info */}
+                <div className="flex flex-col">
+                  <label className="mb-2 text-sm font-medium text-black">Additional Information</label>
+                  <textarea name="additionalInfo" value={data.additionalInfo} onChange={handleChange} className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black min-h-[100px]" />
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  onClick={handleSubmit}
+                  disabled={!requiredFieldsFilled || !resumeUploaded}
+                  className={`w-full mt-6 py-3 rounded-lg font-bold transition-all ${
+                    requiredFieldsFilled && resumeUploaded
+                      ? 'bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 text-white'
+                      : 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                  }`}
+                >
+                  {isSubmitted ? 'Update Profile' : 'Save Profile'}
+                </button>
               </div>
+            )}
 
-              <div className="flex flex-col">
-                <label htmlFor="additionalInfo" className="mb-2 text-sm font-medium text-black">
-                  Additional Information
-                </label>
-                <textarea
-                  name="additionalInfo"
-                  value={data.additionalInfo}
-                  onChange={handleChange}
-                  className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black min-h-[100px]"
-                />
-              </div>
-
-              <button
-                onClick={handleSubmit}
-                disabled={!requiredFieldsFilled || !resumeUploaded}
-                className={`w-full mt-6 py-3 rounded-lg font-bold transition-all ${
-                  requiredFieldsFilled && resumeUploaded
-                    ? 'bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 text-white'
-                    : 'bg-gray-400 text-gray-700 cursor-not-allowed'
-                }`}
-              >
-                {isSubmitted ? 'Update Profile' : 'Save Profile'}
-              </button>
-
-               
-            </div>
+            {activeTab === 'Exclusions' && <div className="text-gray-700"><FilterSettingsConfigs /></div>}
+            {activeTab === 'Skills' && <div className="text-gray-700"> <SkillsManager /></div>}
+            {activeTab === 'Experience' && <div className="text-gray-700"><ExperienceManager /> </div>}
           </div>
         </div>
       </div>
 
-      <div className="w-80 h-[50%] rounded-2xl mr-4 mt-8 bg-blue-900/50 backdrop-blur-md border-lg border-gray-700/50 p-6">
+      
+      {/* Sidebar with Profile Status */}
+      <div className="w-90 h-[50%] rounded-2xl mr-4 mt-8 bg-gradient-to-r from-indigo-600 to-purple-800 backdrop-blur-md border-lg border-gray-700/50 p-6">
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-white mb-2">Complete Your Profile</h2>
+          <h2 className="text-xl font-bold text-white mb-2">Job Profile Status</h2>
           <p className="text-gray-300 text-sm">Access full features after completing your profile.</p>
         </div>
 
@@ -435,12 +495,48 @@ const ProfileBuilder: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-right mb-2">
-          <span className="text-white text-sm font-medium">{calculateProgress()}% complete</span>
-        </div>
-        <div className="w-full bg-gray-700 rounded-full h-2">
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300" style={{ width: `${calculateProgress()}%` }}></div>
-        </div>
+       <div className="flex justify-end mb-6 -mt-40">
+  <div className="relative w-32 h-32">
+    <svg className="absolute top-0 left-0 w-full h-full transform -rotate-90">
+      {/* Background Circle */}
+      <circle
+        cx="50%"
+        cy="50%"
+        r="45"
+        stroke="#4B5563"
+        strokeWidth="10"
+        fill="none"
+      />
+      {/* Progress Circle */}
+      <circle
+        cx="50%"
+        cy="50%"
+        r="45"
+        stroke="url(#gradient)"
+        strokeWidth="10"
+        fill="none"
+        strokeDasharray="283"
+        strokeDashoffset={`${283 - (calculateProgress() / 100) * 283}`}
+        strokeLinecap="round"
+      />
+      <defs>
+        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#a855f7" />
+          <stop offset="100%" stopColor="#ec4899" />
+        </linearGradient>
+      </defs>
+    </svg>
+
+    {/* Center Text */}
+    <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+      <span className="text-xs text-gray-300">Profile</span>
+      <span className="text-xs text-gray-300">Completion</span>
+      <span className="text-xl font-bold">{calculateProgress()}%</span>
+    </div>
+  </div>
+</div>
+
+
       </div>
     </div>
   );

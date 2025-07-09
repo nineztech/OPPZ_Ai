@@ -925,6 +925,22 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
     });
     return true;
   }
+  const { key, value } = message;
+
+  if (action === 'updateFilterSetting') {
+    if (!key) {
+      console.warn("No key provided in updateFilterSetting message");
+      sendResponse({ success: false });
+      return;
+    }
+
+    chrome.storage.local.set({ [key]: value }, () => {
+      console.log('Updated filter setting:', key, value);
+      sendResponse({ success: true });
+    });
+
+    return true; // Keep message channel alive
+  }
 });
 
 

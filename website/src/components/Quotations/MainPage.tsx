@@ -3,7 +3,7 @@ import DefaultFieldsForm from './DefaultFieldsForm';
 import InputFieldConfigs from './InputFieldConfigs';
 import RadioButtonConfigs from './RadioButtonConfigs';
 import DropdownConfigs from './DropdownConfigs';
-
+import {Settings2} from 'lucide-react';
 const tabs = [
    { label: 'Default Fields', key: 'Person' },
   { label: 'Text Fields', key: 'text' },
@@ -30,11 +30,16 @@ const MainPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl bg-gradient-to-br from-indigo-600 to-purple-800 mx-auto p-3">
-      
-     <div className="bg-gray-100  p-6 rounded-2xl shadow-md">
-       <h1 className="text-3xl font-bold text-left text-black mb-6 ml-2">Auto Apply Config Panel</h1>
-      <div className="flex justify-left space-x-4 w-[65%]  mb-4     ">
+    <div className="max-w-5xl bg-[#f4ffee] mx-auto ml-8 p-4">  
+     <div className="bg-gray-100   rounded-2xl shadow-md">
+        <div className="text-center mb-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-t-2xl text-white py-8">
+          <h1 className="text-3xl ml-8 font-bold flex justify-center items-center gap-2">
+            <Settings2 className="w-10 h-10  " /> Auto Apply Config Panel
+          </h1>
+          <p className="text-sm flex justify-center items-center ml-8">Manage how OPPZ automatically applies to jobs — personalize filters, keywords, and behavior to suit your needs.</p>
+        </div>
+       
+      <div className="flex justify-left space-x-4 w-[65%]  mb-4 p-6    ">
         {tabs.map(tab => (
           <button
             key={tab.key}

@@ -83,11 +83,13 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-0 left-0 h-screen w-70  bg-gradient-to-b from-blue-800 to-purple-900 text-white z-50 rounded-tr-lg rounded-br-lg shadow-lg flex flex-col justify-between">
+    <div className="fixed top-0  z-50 left-0 h-screen w-63  bg-gradient-to-b from-blue-800 to-purple-900 text-white z-50 rounded-tr-lg rounded-br-lg shadow-lg flex flex-col justify-between">
       <div>
-        <div className="flex justify-center items-center px-4 py-4">
-          <span className="text-white font-bold text-lg">OPPZ-AI</span>
-        </div>
+       <div className="flex justify-center items-center gap-2 px-4 py-4">
+         <img src="/OPPZ_Ai_Logo.png" alt="Logo" className="w-8 h-8" />
+         <span className="text-white font-bold text-lg">OPPZ Ai</span>
+       </div>
+
 
         {/* Profile completion status indicator */}
         <div className="px-4 py-2 mb-2">
@@ -123,14 +125,14 @@ export const Sidebar: React.FC = () => {
           <SidebarLink
             to="/profile"
             icon={<User2 size={20} />}
-            text="Career Profile Details"
+            text="Career Profile Summary"
             navigate={navigate}
             isProfileComplete={isProfileComplete}
           />
           <SidebarLink
             to="/MainPage"
             icon={<Bookmark size={20} />}
-            text="Quotation Library"
+            text="Questions Library"
             restricted={!isProfileComplete}
             onRestricted={handleBlockedRoute}
             navigate={navigate}
@@ -149,7 +151,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <div className="px-4 py-3 text-xs text-gray-400">
-        © {new Date().getFullYear()} OPPZ-AI
+        © {new Date().getFullYear()} OPPZ Ai
       </div>
     </div>
   );

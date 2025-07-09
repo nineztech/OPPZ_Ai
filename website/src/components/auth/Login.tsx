@@ -66,7 +66,7 @@ const Login: React.FC = () => {
 
       // Use auth context login method
       login(data.token, data.user);
-
+localStorage.setItem('userEmail', data.user.email);
       // Navigate to profile
       navigate('/profile');
     } catch (err) {

@@ -58,23 +58,23 @@ function AppContent() {
     <div className="App flex">
       {/* Sidebar - only show when authenticated */}
       {isAuthenticated && (
-        <div className="fixed left-0 top-0 h-full w-52 z-10">
+        <div className="fixed left-0  top-0 h-full w-52 z-30">
           <Sidebar />
         </div>
       )}
 
       {/* Main content area */}
-      <div className={`flex-1 min-h-screen bg-gradient-to-br from-indigo-600 to-purple-800 transition-all duration-300 ${isAuthenticated ? 'ml-52' : ''}`}>
+      <div className={`flex-1 min-h-screen bg-[#f4ffee] transition-all duration-300 ${isAuthenticated ? 'ml-52' : ''}`}>
         {/* Navbar */}
         <nav className=" bg-gradient-to-r from-blue-800 to-purple-900 shadow-md py-4 px-6 sticky top-0 z-20">
           <div className="flex justify-between items-center">
             {/* Logo */}
             <div 
-              className="flex items-center space-x-2 cursor-pointer" 
-              onClick={() => navigate('/')}
+              className="flex items-center ml-8 space-x-2 cursor-pointer" 
+              // onClick={() => navigate('/')}
             >
-              <img src="/logo.png" alt="Logo" width="40" height="40" />
-              <span className="text-xl font-bold text-gray-100">Easy Apply LinkedIn</span>
+              <img src="/OPPZ_Ai_Logo.png" alt="Logo" width="40" height="40" />
+              <span className="text-xl font-bold ml-8 text-gray-100">Easy Apply LinkedIn</span>
             </div>
 
             {/* Navigation Links - only for non-authenticated users */}

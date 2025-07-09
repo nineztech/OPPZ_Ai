@@ -18,7 +18,7 @@ const defaultNullFieldInput: DefaultFields = {
   Email: '',
 };
 
-const EXTENSION_ID = 'gkjemnmlpgdngnchlgnhacembojdfnbm';
+const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim'; 
 
 const isChromeExtension = () =>
   typeof chrome !== 'undefined' &&
@@ -183,8 +183,8 @@ ${failedFields.length > 0 ? `Failed fields: ${failedFields.join(', ')}` : 'All f
   };
 
   return (
-    <div>
-      <h3 className={`text-sm font-medium mb-4 ${statusColor}`}>{statusMsg}</h3>
+    <div className='p-8'>
+      <h3 className={`text-sm font-medium  mb-4 ${statusColor}`}>{statusMsg}</h3>
       
      <div className="flex flex-wrap gap-6">
   {Object.entries(fields).map(([key, val]) => (
@@ -210,13 +210,13 @@ ${failedFields.length > 0 ? `Failed fields: ${failedFields.join(', ')}` : 'All f
         <button
           onClick={handleConfirm}
           disabled={isLoading}
-          className={`w-[20%] px-4 py-2 text-white rounded ${
+          className={`w-[10%] px-4 py-2 text-white rounded ${
             isLoading 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
-          {isLoading ? 'Sending to Extension...' : 'Confirm & Send'}
+          {isLoading ? 'Sending to Extension...' : 'Save'}
         </button>
 
         {/* <button

@@ -14,7 +14,7 @@ interface DropdownConfig {
   updatedAt?: string;
 }
 
-const EXTENSION_ID = 'gkjemnmlpgdngnchlgnhacembojdfnbm';
+const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim';
 
 const isChromeExtension = () =>
   typeof chrome !== 'undefined' &&
@@ -114,7 +114,7 @@ const DropdownConfigs: React.FC = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
       {configs.length === 0 ? (
         <p className="text-gray-500 col-span-2 text-center">No dropdown configurations found.</p>
       ) : (

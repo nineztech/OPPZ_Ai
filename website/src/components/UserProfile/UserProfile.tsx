@@ -256,13 +256,13 @@ const ProfilesList: React.FC = () => {
                 {profiles.map((profile) => (
                   <div
                     key={profile.id}
-                    className={`bg-gray-200 rounded-xl p-6 border transition-all ${
+                    className={` rounded-xl p-6 border bg-gray-200 transition-all ${
                       selectedProfile?.id === profile.id
-                        ? 'border-blue-500 bg-slate-700'
+                        ? 'border-blue-500  '
                         : 'border-slate-600'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex bg-gray-200 items-start justify-between">
                       <div className="flex-1">
                         <h3 className="text-xl font-semibold text-Black mb-3">
                           {profile.firstName} {profile.lastName}

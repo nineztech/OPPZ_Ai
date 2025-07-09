@@ -137,6 +137,7 @@ const SignUp: React.FC = () => {
       }
 
       login(data.token, data.user);
+      localStorage.setItem('userEmail', data.user.email);
 
       // ✅ Send message to Chrome extension after successful signup
       sendMessageToExtension({ from: 'website', action: 'userLoggedIn', user: data.user });
