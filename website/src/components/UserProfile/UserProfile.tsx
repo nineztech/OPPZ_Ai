@@ -33,7 +33,7 @@ const ProfilesList: React.FC = () => {
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('User');
-
+ const api_baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5006';
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -55,7 +55,7 @@ const ProfilesList: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${config.apiBaseUrl}/api/profiles`);
+      const response = await fetch(`${api_baseUrl}/api/profiles`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
@@ -82,7 +82,7 @@ const ProfilesList: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this profile?')) return;
 
     try {
-      const response = await fetch(`${config.apiBaseUrl}/api/profile/${id}`, {
+      const response = await fetch(`${api_baseUrl}/api/profile/${id}`, {
         method: 'DELETE',
       });
 

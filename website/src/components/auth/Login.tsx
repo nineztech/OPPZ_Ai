@@ -32,6 +32,7 @@ const Login: React.FC = () => {
   });
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -48,7 +49,7 @@ const Login: React.FC = () => {
 
     try {
       console.log('Attempting login...');
-      const response = await fetch(`${config.apiBaseUrl}/users/login`, {
+      const response = await fetch(`${api_baseUrl}/users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

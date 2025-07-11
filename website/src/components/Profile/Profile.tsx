@@ -51,6 +51,7 @@ const ProfileBuilder: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Personal Details');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
+  const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006";
 
   // Required fields for profile completion
   const requiredFields = ['firstName', 'lastName', 'email', 'experience', 'city', 'phone', 'currentSalary', 'expectedSalary'];
@@ -133,7 +134,7 @@ const ProfileBuilder: React.FC = () => {
           const userEmail = parsedUser?.email;
 
           if (userEmail) {
-            const response = await fetch(`${config.apiBaseUrl}/api/profiles`);
+            const response = await fetch(`${api_baseUrl}/api/profiles`);
             const json = await response.json();
             const profile = json.profiles?.find((p: any) => p.email === userEmail);
             
@@ -302,7 +303,7 @@ const ProfileBuilder: React.FC = () => {
     try {
       console.log("🌐 Making API request to:", `${config.apiBaseUrl}/api/profile`);
       
-      const response = await fetch(`${config.apiBaseUrl}/api/profile`, {
+      const response = await fetch(`${api_baseUrl}/api/profile`, {
         method: 'POST',
         body: formData,
       });

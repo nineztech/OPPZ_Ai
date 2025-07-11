@@ -29,6 +29,7 @@ interface UserResponse {
 
 // ✅ Extension messaging helpers
 const EXTENSION_ID = ' gkjemnmlpgdngnchlgnhacembojdfnbm';
+const api_baseUrl= process.env.REACT_APP_API_BASE_URL || 'http://localhost:5006';
 
 const isChromeExtensionAvailable = (): boolean =>
   typeof chrome !== 'undefined' &&
@@ -101,7 +102,7 @@ const SignUp: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${config.apiBaseUrl}/users/register`, {
+      const response = await fetch(`${api_baseUrl}/users/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
