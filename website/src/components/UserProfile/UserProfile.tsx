@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState,useCallback, useEffect } from 'react';
 import {
   Users, Trash2, Download, Mail, Phone,
   MapPin, Calendar, DollarSign, FileText, RefreshCw,
@@ -50,39 +50,40 @@ const ProfilesList: React.FC = () => {
     }
   }, []);
 
-  const fetchProfiles = async () => {
-    if (!userEmail) return;
+const fetchProfiles = useCallback(async () => {
+  if (!userEmail) return;
 
-    try {
-      setLoading(true);
-      const response = await fetch(`${api_baseUrl}/api/profiles`);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    setLoading(true);
+    const response = await fetch(`${api_baseUrl}/api/profiles`);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      const data = await response.json();
-      if (data.success) {
-        const filtered = data.profiles.filter((profile: Profile) => profile.email === userEmail);
-        setProfiles(filtered);
-        // Auto-select the first profile
-        if (filtered.length > 0) {
-          setSelectedProfile(filtered[0]);
-        }
-        setError(null);
-      } else {
-        setError(data.message || 'Failed to fetch profiles');
+    const data = await response.json();
+    if (data.success) {
+      const filtered = data.profiles.filter((profile: Profile) => profile.email === userEmail);
+      setProfiles(filtered);
+      if (filtered.length > 0) {
+        setSelectedProfile(filtered[0]);
       }
-    } catch (err) {
-      console.error('Error fetching profiles:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
+      setError(null);
+    } else {
+      setError(data.message || 'Failed to fetch profiles');
     }
-  };
+  } catch (err) {
+    console.error('Error fetching profiles:', err);
+    setError(err instanceof Error ? err.message : 'Unknown error');
+  } finally {
+    setLoading(false);
+  }
+}, [userEmail, api_baseUrl]);
+
 
 useEffect(() => {
   if (userEmail) {
     fetchProfiles();
   }
-}, [userEmail]);
+}, [userEmail, fetchProfiles]); // ✅ Add fetchProfiles here
+
 
 
   const deleteProfile = async (id: number) => {
