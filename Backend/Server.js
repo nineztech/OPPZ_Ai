@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -13,11 +14,20 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = 5006;
 
-// Enable CORS
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('✅ Created uploads directory');
+}
+
+// Enable CORS - Fixed configuration
 app.use(cors({
-origin:'chrome-extension://*',
-  origin:  'moz-extension://*',
-  origin: 'http://localhost:3000',
+  origin: [
+    'chrome-extension://*',
+    'moz-extension://*',
+    'http://localhost:3000'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
@@ -27,13 +37,12 @@ origin:'chrome-extension://*',
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploads folder
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploads folder - Fixed path
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount API routes
- 
-- app.use('/', routes);
-+ app.use('/api', routes); // ✅ mount all routes under /api
+app.use('/api', routes);
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ message: 'Server is running!', timestamp: new Date(), port: PORT });
@@ -50,6 +59,8 @@ const startServer = async () => {
     
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📁 Uploads directory: ${uploadsDir}`);
+      console.log(`🔗 File access URL: http://localhost:${PORT}/api/uploads/[filename]`);
     });
   } catch (error) {
     console.error('❌ Server failed to start:', error);
