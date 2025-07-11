@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import config from '../../config';
+ 
 interface DefaultFields {
   YearsOfExperience: string;
   FirstName: string;
@@ -40,7 +40,7 @@ const DefaultFieldsForm: React.FC = () => {
   const [statusColor, setStatusColor] = useState<string>('text-red-600');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
-
+  const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006";
   // Load profile from localStorage + API
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -51,7 +51,7 @@ const DefaultFieldsForm: React.FC = () => {
 
     if (!userEmail) return;
 
-    fetch(`${config.apiBaseUrl}/api/profiles`)
+    fetch(`${api_baseUrl}/api/profiles`)
       .then(res => res.json())
       .then(json => {
         const profile = json.profiles?.find((p: any) => p.email === userEmail);
@@ -74,7 +74,7 @@ const DefaultFieldsForm: React.FC = () => {
       .catch(err => {
         console.error('Failed to fetch profile:', err);
       });
-  }, []);
+  }, [api_baseUrl]);
 
   // Status UI
   useEffect(() => {
