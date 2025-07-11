@@ -7,12 +7,14 @@ import { dirname } from 'path';
 
 import { sequelize } from './config/dbConnection.js';
 import routes from './routes/index.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = 5006;
+const PORT = process.env.DB_PORT || 5006;
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -26,7 +28,7 @@ app.use(cors({
   origin: [
     'chrome-extension://*',
     'moz-extension://*',
-    'http://localhost:3000'
+    process.env.USER_URL,
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
