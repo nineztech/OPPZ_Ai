@@ -78,6 +78,13 @@ const ProfilesList: React.FC = () => {
     }
   };
 
+useEffect(() => {
+  if (userEmail) {
+    fetchProfiles();
+  }
+}, [userEmail]);
+
+
   const deleteProfile = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this profile?')) return;
 
