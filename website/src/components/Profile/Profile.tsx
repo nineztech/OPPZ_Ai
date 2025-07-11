@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Check,FileText, UserCog,Upload, User, Save } from 'lucide-react';
+import { Check, FileText, UserCog, Upload, User, Save } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
-import FilterSettingsConfigs  from './FilterSettingsConfig';
+import FilterSettingsConfigs from './FilterSettingsConfig';
 import SkillsManager from './Skills';
 import ExperienceManager from './Experiance';
-
+import config from '../../config';
 
 interface ProfileData {
   firstName: string;
@@ -35,7 +35,7 @@ const initialState: ProfileData = {
   currentSalary: '',
   expectedSalary: '',
   gender: '',
-  military:'',
+  military: '',
   citizenship: '',
   age: '',
   noticePeriod: '',
@@ -45,8 +45,10 @@ const initialState: ProfileData = {
 const ProfileBuilder: React.FC = () => {
   const [data, setData] = useState<ProfileData>(initialState);
   const [resumeFile, setResumeFile] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [profileExists, setProfileExists] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState('Personal Details');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
@@ -70,7 +72,7 @@ const ProfileBuilder: React.FC = () => {
     });
     
     // Check if resume is uploaded
-    const resumeUploaded = !!resumeFile;
+    const resumeUploaded = !!(resumeFile && (selectedFile || profileExists));
     
     // Profile is complete if all required fields are filled, resume is uploaded, and profile is submitted
     return allRequiredFieldsFilled && resumeUploaded && isSubmitted;
@@ -78,62 +80,83 @@ const ProfileBuilder: React.FC = () => {
 
   // Function to update profile status
   const updateProfileStatus = () => {
+    const requiredFieldsStatus = requiredFields.every(field => {
+      const value = data[field as keyof ProfileData];
+      return isFieldFilled(value);
+    });
+    
+    const resumeStatus = !!(resumeFile && (selectedFile || profileExists));
     const complete = isProfileComplete();
+    
     const statusData = {
       completed: complete,
       timestamp: Date.now(),
       lastUpdated: new Date().toISOString(),
-      requiredFieldsFilled: requiredFields.every(field => {
-        const value = data[field as keyof ProfileData];
-        return isFieldFilled(value);
-      }),
-      resumeUploaded: !!resumeFile,
+      requiredFieldsFilled: requiredFieldsStatus,
+      resumeUploaded: resumeStatus,
       submitted: isSubmitted
     };
     
     console.log('Updating profile status:', statusData);
-    localStorage.setItem('profileStatus', JSON.stringify(statusData));
+    
+    // Update localStorage
+    try {
+      localStorage.setItem('profileStatus', JSON.stringify(statusData));
+    } catch (error) {
+      console.error('Failed to update localStorage:', error);
+    }
     
     // Dispatch event to notify other components
     window.dispatchEvent(new CustomEvent('profileStatusChanged', { 
       detail: statusData
     }));
+    
+    return statusData;
   };
 
   // Update status whenever data, resume, or submission status changes
   useEffect(() => {
-    updateProfileStatus();
-  }, [data, resumeFile, isSubmitted]);
+    const timeoutId = setTimeout(() => {
+      updateProfileStatus();
+    }, 100); // Small delay to ensure state is updated
+    
+    return () => clearTimeout(timeoutId);
+  }, [data, resumeFile, selectedFile, isSubmitted, profileExists]);
 
   // Load existing profile data
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      const userEmail = parsedUser?.email;
+    const loadProfile = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          const userEmail = parsedUser?.email;
 
-      if (userEmail) {
-        fetch(`http://localhost:5006/api/profiles`)
-          .then(res => res.json())
-          .then(json => {
+          if (userEmail) {
+            const response = await fetch(`${config.apiBaseUrl}/api/profiles`);
+            const json = await response.json();
             const profile = json.profiles?.find((p: any) => p.email === userEmail);
+            
             if (profile) {
               const { resume, ...rest } = profile;
               setData(rest);
               setResumeFile(resume || null);
               setProfileExists(true);
-              setIsSubmitted(true); // If profile exists, it was submitted
+              setIsSubmitted(true);
             } else {
               setProfileExists(false);
               setIsSubmitted(false);
             }
-          })
-          .catch(() => {
-            setProfileExists(false);
-            setIsSubmitted(false);
-          });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        setProfileExists(false);
+        setIsSubmitted(false);
       }
-    }
+    };
+
+    loadProfile();
   }, []);
 
   const handleChange = (
@@ -145,8 +168,44 @@ const ProfileBuilder: React.FC = () => {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    console.log("📎 File upload handler called");
+    console.log("📎 Selected file:", file);
+    
     if (file) {
+      console.log("📎 File details:", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('⚠️ Please select a PDF, DOC, or DOCX file.');
+        e.target.value = '';
+        setSelectedFile(null);
+        setResumeFile(null);
+        return;
+      }
+      
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('⚠️ File size must be less than 5MB.');
+        e.target.value = '';
+        setSelectedFile(null);
+        setResumeFile(null);
+        return;
+      }
+      
+      // Store both the file object and the filename
+      setSelectedFile(file);
       setResumeFile(file.name);
+      console.log("✅ File set successfully:", file.name);
+    } else {
+      console.log("❌ No file selected");
+      setSelectedFile(null);
+      setResumeFile(null);
     }
   };
 
@@ -171,7 +230,7 @@ const ProfileBuilder: React.FC = () => {
     });
     
     // Add resume
-    if (resumeFile) filled++;
+    if (resumeFile && (selectedFile || profileExists)) filled++;
     
     // Total fields = required + optional + resume
     const totalFields = requiredFields.length + optionalFields.length + 1;
@@ -179,37 +238,80 @@ const ProfileBuilder: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    console.log("🚀 === DEBUGGING FRONTEND SUBMISSION ===");
+    
     // Check if all required fields are filled
     const allRequiredFieldsFilled = requiredFields.every(field => {
       const value = data[field as keyof ProfileData];
       return isFieldFilled(value);
     });
 
+    console.log("✅ Required fields filled:", allRequiredFieldsFilled);
+    console.log("📎 Resume file:", resumeFile);
+    console.log("📎 Selected file object:", selectedFile);
+
     if (!allRequiredFieldsFilled) {
       alert('⚠️ Please fill all required fields before submitting.');
       return;
     }
 
-    if (!resumeFile) {
+    if (!resumeFile || (!selectedFile && !profileExists)) {
       alert('⚠️ Please upload your resume before submitting.');
       return;
     }
 
+    // If updating existing profile and no new file selected, we can proceed
+    if (profileExists && !selectedFile) {
+      console.log("📎 Updating existing profile without new file");
+    } else if (selectedFile) {
+      console.log("📎 Selected file details:", {
+        name: selectedFile.name,
+        size: selectedFile.size,
+        type: selectedFile.type,
+        lastModified: selectedFile.lastModified
+      });
+
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(selectedFile.type)) {
+        alert('⚠️ Please select a PDF, DOC, or DOCX file.');
+        return;
+      }
+
+      // Validate file size (5MB max)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        alert('⚠️ File size must be less than 5MB.');
+        return;
+      }
+    }
+
     const formData = new FormData();
     formData.append('data', JSON.stringify(data));
+    
+    // Only append file if a new one is selected
+    if (selectedFile) {
+      formData.append('resume', selectedFile);
+    }
 
-    if (fileInputRef.current?.files?.[0]) {
-      formData.append('resume', fileInputRef.current.files[0]);
+    console.log("📦 FormData created:");
+    console.log("📦 Data:", JSON.stringify(data));
+    if (selectedFile) {
+      console.log("📦 File:", selectedFile);
     }
 
     try {
-      const response = await fetch('http://localhost:5006/api/profile', {
+      console.log("🌐 Making API request to:", `${config.apiBaseUrl}/api/profile`);
+      
+      const response = await fetch(`${config.apiBaseUrl}/api/profile`, {
         method: 'POST',
         body: formData,
       });
 
+      console.log("📡 Response status:", response.status);
+
       if (response.ok) {
         const result = await response.json();
+        console.log("✅ Success response:", result);
         
         // Set submission status to true
         setIsSubmitted(true);
@@ -218,24 +320,23 @@ const ProfileBuilder: React.FC = () => {
         // Show success message
         alert('✅ Profile submitted successfully!');
         
-        // Force immediate status update
+        // Force status update after a short delay
         setTimeout(() => {
           updateProfileStatus();
-        }, 100);
+        }, 200);
         
       } else {
         const errorText = await response.text();
+        console.error("❌ Error response:", errorText);
         alert(`🚫 Error: ${response.statusText}\nDetails: ${errorText}`);
       }
     } catch (error) {
-      console.error(error);
+      console.error("❌ Network error:", error);
       if (error instanceof Error) {
         alert(`Network error: ${error.message}`);
       }
     }
   };
-      
-  
 
   const handleNavigate = () => {
     if (!isProfileComplete()) {
@@ -244,7 +345,6 @@ const ProfileBuilder: React.FC = () => {
     }
     navigate('/another-page');
   };
-const [activeTab, setActiveTab] = useState('Personal Details');
 
   // Calculate completion status for UI
   const requiredFieldsFilled = requiredFields.every(field => {
@@ -252,7 +352,7 @@ const [activeTab, setActiveTab] = useState('Personal Details');
     return isFieldFilled(value);
   });
   
-const calculateGrowthExpectation = (current: string, expected: string) => {
+  const calculateGrowthExpectation = (current: string, expected: string) => {
     const currentNum = parseInt(current.replace(/[^\d]/g, ''));
     const expectedNum = parseInt(expected.replace(/[^\d]/g, ''));
     if (currentNum > 0) {
@@ -261,82 +361,82 @@ const calculateGrowthExpectation = (current: string, expected: string) => {
     return 0;
   };
 
-  const resumeUploaded = !!resumeFile;
+  const resumeUploaded = !!(resumeFile && (selectedFile || profileExists));
   const allComplete = isProfileComplete();
 
   return (
-    <div className="min-h-screen rounded-xl  p-4 -mt-8 flex">
+    <div className="min-h-screen rounded-xl p-4 ml-6 -mt-2 flex">
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-2xl backdrop-blur-md ">
-          <div className="text-center bg-gradient-to-br from-indigo-500 to-purple-600 rounded-t-2xl text-white py-8">
-          <h1 className="text-3xl ml-8 font-bold flex justify-center items-center gap-2">
-            <UserCog className="w-10 h-10" /> Shape Your Job Profile
-          </h1>
-          <p className="text-sm justify-center items-center ml-8">Customize and optimize your job application preferences to match your dream role.</p>
+          <div className="bg-white rounded-2xl shadow-2xl backdrop-blur-md">
+            <div className="text-center bg-gradient-to-br from-indigo-500 to-purple-600 rounded-t-2xl text-white py-8">
+              <h1 className="text-3xl ml-8 font-bold flex justify-center items-center gap-2">
+                <UserCog className="w-10 h-10" /> Shape Your Job Profile
+              </h1>
+              <p className="text-sm justify-center items-center ml-8">Customize and optimize your job application preferences to match your dream role.</p>
+            </div>
 
+            {/* Tabs */}
+            <div className="mb-6 border-b border-gray-200 m-8">
+              <div className="flex space-x-6">
+                {['Personal Details', 'Exclusions', 'Skills', 'Experience'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 font-semibold transition-all ${
+                      activeTab === tab
+                        ? 'border-b-2 border-blue-500 text-blue-700'
+                        : 'text-gray-600 hover:text-blue-500'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-</div>
-
-
-         {/* Tabs */}
-        <div className="mb-6 border-b border-gray-200 m-8">
-          <div className="flex space-x-6">
-            {['Personal Details', 'Exclusions', 'Skills', 'Experience'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 font-semibold transition-all ${
-                  activeTab === tab
-                    ? 'border-b-2 border-blue-500 text-blue-700'
-                    : 'text-gray-600 hover:text-blue-500'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-            {/* Debug info
-            <div className="mb-4 p-3 text-white bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-sm">
+            {/* Debug info - Uncomment to see status
+            <div className="mb-4 p-3 text-white bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-sm m-8">
               <strong>Debug Info:</strong><br/>
               Required Fields Filled: {requiredFieldsFilled ? '✅' : '❌'}<br/>
               Resume Uploaded: {resumeUploaded ? '✅' : '❌'}<br/>
               Profile Submitted: {isSubmitted ? '✅' : '❌'}<br/>
-              Profile Complete: {allComplete ? '✅' : '❌'}
+              Profile Exists: {profileExists ? '✅' : '❌'}<br/>
+              Profile Complete: {allComplete ? '✅' : '❌'}<br/>
+              Resume File: {resumeFile ? resumeFile : 'None'}<br/>
+              Selected File: {selectedFile ? selectedFile.name : 'None'}
             </div> */}
-             {activeTab === 'Personal Details' && (
+
+            {activeTab === 'Personal Details' && (
               <div className="p-6 space-y-6">
                 {/* Resume Upload */}
-                 
-                  {!resumeFile ? (
-                    <>
-                    <div className="p-6 border rounded-xl border-blue-900 border-dashed">
-                      <Upload className="w-12 h-12 text-blue-900 mx-auto mb-4" />
-                      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileUpload} className="hidden" id="resume-upload" />
-                      <label htmlFor="resume-upload" className="cursor-pointer text-blue-400 hover:text-blue-900 font-medium text-center block">
-                        Click to upload your resume
-                      </label>
+                {!resumeFile ? (
+                  <div className="p-6 border rounded-xl border-blue-900 border-dashed">
+                    <Upload className="w-12 h-12 text-blue-900 mx-auto mb-4" />
+                    <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileUpload} className="hidden" id="resume-upload" />
+                    <label htmlFor="resume-upload" className="cursor-pointer text-blue-400 hover:text-blue-900 font-medium text-center block">
+                      Click to upload your resume
+                    </label>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-gradient-to-r from-indigo-800 to-purple-800 p-4 rounded-xl text-white">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-green-500 rounded-full w-6 h-6 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white" />
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-between bg-gradient-to-r from-indigo-800 to-purple-800 p-4 rounded-xl text-white">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-green-500 rounded-full w-6 h-6 flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{resumeFile}</p>
-                          <p className="text-sm text-blue-200">PDF Document • Uploaded successfully</p>
-                        </div>
+                      <div>
+                        <p className="font-medium">{resumeFile}</p>
+                        <p className="text-sm text-blue-200">
+                          {selectedFile ? 'New file selected' : 'Previously uploaded'} • Ready to submit
+                        </p>
                       </div>
-                      <label htmlFor="resume-upload" className="cursor-pointer">
-                        <Upload className="w-5 h-5 opacity-60 hover:opacity-100" />
-                      </label>
-                      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileUpload} className="hidden" id="resume-upload" />
                     </div>
-                  )}
-                
+                    <label htmlFor="resume-upload" className="cursor-pointer">
+                      <Upload className="w-5 h-5 opacity-60 hover:opacity-100" />
+                    </label>
+                    <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileUpload} className="hidden" id="resume-upload" />
+                  </div>
+                )}
 
                 {/* Input Fields */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -386,16 +486,14 @@ const calculateGrowthExpectation = (current: string, expected: string) => {
                     </div>
                   ))}
                   <div className="w-20 h-12 rounded-xl bg-orange-200 flex flex-col items-center justify-center shadow text-orange-600 font-semibold text-xs text-center p-2 mt-[30px]">
-                     <span className="text-xs text-orange-800 font-medium">Growth EX.</span>
-  
-                     <span className="text-xl font-bold">
+                    <span className="text-xs text-orange-800 font-medium">Growth EX.</span>
+                    <span className="text-xl font-bold">
                       {calculateGrowthExpectation(data.currentSalary, data.expectedSalary)}%
-                     </span>
+                    </span>
                   </div>
-
                 </div>
 
-                {/* Gender + Citizenship + Military */}
+                {/* Gender + Citizenship */}
                 <div className="flex flex-col lg:flex-row gap-6 w-full">
                   <div className="flex-1 flex flex-col">
                     <label className="mb-2 text-sm font-medium text-black">Gender</label>
@@ -416,17 +514,6 @@ const calculateGrowthExpectation = (current: string, expected: string) => {
                       <option value="permanent-resident">Permanent Resident</option>
                     </select>
                   </div>
-
-                  {/* <div className="flex-1 flex flex-col">
-                    <label className="mb-2 text-sm font-medium text-black">Military / Army Status</label>
-                    <select name="military" value={data.military} onChange={handleChange} className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black">
-                      <option value="">Select military status</option>
-                      <option value="Active Duty">Active Duty</option>
-                      <option value="No Military Services">No Military Services</option>
-                      <option value="Reservist">Reservist</option>
-                      <option value="Veteran">Veteran</option>
-                    </select>
-                  </div> */}
                 </div>
 
                 {/* Additional Info */}
@@ -451,13 +538,12 @@ const calculateGrowthExpectation = (current: string, expected: string) => {
             )}
 
             {activeTab === 'Exclusions' && <div className="text-gray-700"><FilterSettingsConfigs /></div>}
-            {activeTab === 'Skills' && <div className="text-gray-700"> <SkillsManager /></div>}
-            {activeTab === 'Experience' && <div className="text-gray-700"><ExperienceManager /> </div>}
+            {activeTab === 'Skills' && <div className="text-gray-700"><SkillsManager /></div>}
+            {activeTab === 'Experience' && <div className="text-gray-700"><ExperienceManager /></div>}
           </div>
         </div>
       </div>
 
-      
       {/* Sidebar with Profile Status */}
       <div className="w-90 h-[50%] rounded-2xl mr-4 mt-8 bg-gradient-to-r from-indigo-600 to-purple-800 backdrop-blur-md border-lg border-gray-700/50 p-6">
         <div className="mb-8">
@@ -495,48 +581,46 @@ const calculateGrowthExpectation = (current: string, expected: string) => {
           </div>
         </div>
 
-       <div className="flex justify-end mb-6 -mt-40">
-  <div className="relative w-32 h-32">
-    <svg className="absolute top-0 left-0 w-full h-full transform -rotate-90">
-      {/* Background Circle */}
-      <circle
-        cx="50%"
-        cy="50%"
-        r="45"
-        stroke="#4B5563"
-        strokeWidth="10"
-        fill="none"
-      />
-      {/* Progress Circle */}
-      <circle
-        cx="50%"
-        cy="50%"
-        r="45"
-        stroke="url(#gradient)"
-        strokeWidth="10"
-        fill="none"
-        strokeDasharray="283"
-        strokeDashoffset={`${283 - (calculateProgress() / 100) * 283}`}
-        strokeLinecap="round"
-      />
-      <defs>
-        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#a855f7" />
-          <stop offset="100%" stopColor="#ec4899" />
-        </linearGradient>
-      </defs>
-    </svg>
+        <div className="flex justify-end mb-6 -mt-40">
+          <div className="relative w-32 h-32">
+            <svg className="absolute top-0 left-0 w-full h-full transform -rotate-90">
+              {/* Background Circle */}
+              <circle
+                cx="50%"
+                cy="50%"
+                r="45"
+                stroke="#4B5563"
+                strokeWidth="10"
+                fill="none"
+              />
+              {/* Progress Circle */}
+              <circle
+                cx="50%"
+                cy="50%"
+                r="45"
+                stroke="url(#gradient)"
+                strokeWidth="10"
+                fill="none"
+                strokeDasharray="283"
+                strokeDashoffset={`${283 - (calculateProgress() / 100) * 283}`}
+                strokeLinecap="round"
+              />
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#a855f7" />
+                  <stop offset="100%" stopColor="#ec4899" />
+                </linearGradient>
+              </defs>
+            </svg>
 
-    {/* Center Text */}
-    <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-      <span className="text-xs text-gray-300">Profile</span>
-      <span className="text-xs text-gray-300">Completion</span>
-      <span className="text-xl font-bold">{calculateProgress()}%</span>
-    </div>
-  </div>
-</div>
-
-
+            {/* Center Text */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+              <span className="text-xs text-gray-300">Profile</span>
+              <span className="text-xs text-gray-300">Completion</span>
+              <span className="text-xl font-bold">{calculateProgress()}%</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

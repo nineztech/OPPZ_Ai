@@ -31,7 +31,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
           <Link to="/" className="text-gray-700 hover:text-blue-600 font-medium">Home</Link>
           <Link to="/features" className="text-gray-700 hover:text-blue-600 font-medium">Features</Link>
           <Link to="/pricing" className="text-gray-700 hover:text-blue-600 font-medium">Pricing</Link>
-
+ <Link to="/login" className="text-gray-100 hover:text-blue-100">Login</Link>
+                <Link to="/signup" className="text-gray-100 hover:text-blue-100">Signup</Link>
           {user ? (
             <>
               <span className="text-gray-700">Welcome, <strong>{user.firstname}</strong>!</span>

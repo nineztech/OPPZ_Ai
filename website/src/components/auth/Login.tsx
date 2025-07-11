@@ -79,10 +79,13 @@ localStorage.setItem('userEmail', data.user.email);
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+      <div className="max-w-md w-full space-y-8 bg-gradient-to-br from-indigo-600 to-purple-800 p-8 rounded-lg shadow-md">
         <div className="text-center">
-          <img className="mx-auto h-16 w-16" src="/logo.png" alt="Logo" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+          <img className="mx-auto h-16 w-16" src="/OPPZ_Ai_Logo.png" alt="Logo" />
+          <h1 className="text-3xl font-extrabold text-gray-100">
+            OPPZ Ai
+          </h1>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-100">
             Sign in to your account
           </h2>
         </div>
@@ -90,7 +93,7 @@ localStorage.setItem('userEmail', data.user.email);
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-100">
                 Email Address
               </label>
               <input
@@ -105,7 +108,7 @@ localStorage.setItem('userEmail', data.user.email);
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-100">
                 Password
               </label>
               <input
@@ -129,7 +132,7 @@ localStorage.setItem('userEmail', data.user.email);
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${
+            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${
               isLoading ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
@@ -137,9 +140,9 @@ localStorage.setItem('userEmail', data.user.email);
           </button>
         </form>
 
-        <div className="text-center text-sm">
+        <div className="text-center text-white text-sm">
           Don't have an account?{' '}
-          <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link to="/signup" className="font-medium text-indigo-200 hover:text-indigo-100">
             Sign up
           </Link>
         </div>

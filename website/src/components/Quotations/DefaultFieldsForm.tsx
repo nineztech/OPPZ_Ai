@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
+import config from '../../config';
 interface DefaultFields {
   YearsOfExperience: string;
   FirstName: string;
@@ -51,7 +51,7 @@ const DefaultFieldsForm: React.FC = () => {
 
     if (!userEmail) return;
 
-    fetch('http://localhost:5006/api/profiles')
+    fetch(`${config.apiBaseUrl}/api/profiles`)
       .then(res => res.json())
       .then(json => {
         const profile = json.profiles?.find((p: any) => p.email === userEmail);

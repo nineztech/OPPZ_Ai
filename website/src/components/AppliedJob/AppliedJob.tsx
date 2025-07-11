@@ -350,7 +350,7 @@ const StatCard = ({
 
 
   return (
-    <div className="p-4 md:p-4 ml-6 bg-[#f4ffee] min-h-screen">
+    <div className="p-4 md:p-4 ml-6 mt-6 bg-[#f4ffee] min-h-screen">
       <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div className="text-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white py-8">
           <h1 className="text-3xl font-bold flex justify-center items-center gap-2">

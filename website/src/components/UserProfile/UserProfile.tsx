@@ -4,6 +4,7 @@ import {
   MapPin, Calendar, DollarSign, FileText, RefreshCw,
   User, CheckCircle, Clock, Briefcase, Award, TrendingUp
 } from 'lucide-react';
+import config from '../../config';
 
 interface Profile {
   id: number;
@@ -54,7 +55,7 @@ const ProfilesList: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5006/api/profiles');
+      const response = await fetch(`${config.apiBaseUrl}/api/profiles`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
@@ -81,7 +82,7 @@ const ProfilesList: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this profile?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5006/api/profile/${id}`, {
+      const response = await fetch(`${config.apiBaseUrl}/api/profile/${id}`, {
         method: 'DELETE',
       });
 
@@ -159,7 +160,7 @@ const ProfilesList: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white-900 text-black-900">
+    <div className="min-h-screen ml-12 mt-6 bg-white-900 text-black-900">
       <div className="flex">
         {/* Sidebar */}
         <div className="w-80 bg- min-h-screen p-6 border-lg border-black-700/50">
@@ -371,7 +372,7 @@ const ProfilesList: React.FC = () => {
                         </div>
                       </div>
                       <a
-                        href={`http://localhost:5006/uploads/${selectedProfile.resume}`}
+                        href={`${config.apiBaseUrl}/uploads/${selectedProfile.resume}`}
                         download
                         className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                       >

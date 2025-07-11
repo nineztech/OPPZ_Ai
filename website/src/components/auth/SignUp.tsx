@@ -162,11 +162,12 @@ const SignUp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+      <div className="max-w-md w-full space-y-8 bg-gradient-to-br from-indigo-600 to-purple-800 p-8 rounded-lg shadow-md">
         <div className="text-center">
-          <img className="mx-auto h-16 w-16" src="/logo.png" alt="Logo" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Create Account</h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <img className="mx-auto h-16 w-16" src="/OPPZ_Ai_Logo.png" alt="Logo" />
+          <h1 className="text-3xl font-extrabold text-gray-100">OPPZ Ai</h1>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-100">Create Account</h2>
+          <p className="mt-2 text-sm text-gray-100">
             Start automating your LinkedIn job applications today
           </p>
         </div>
@@ -175,7 +176,7 @@ const SignUp: React.FC = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstname" className="block text-sm font-medium text-gray-700">First Name</label>
+                <label htmlFor="firstname" className="block text-sm font-medium text-gray-100">First Name</label>
                 <input
                   type="text"
                   id="firstname"
@@ -187,7 +188,7 @@ const SignUp: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="lastname" className="block text-sm font-medium text-gray-700">Last Name</label>
+                <label htmlFor="lastname" className="block text-sm font-medium text-gray-100">Last Name</label>
                 <input
                   type="text"
                   id="lastname"
@@ -202,7 +203,7 @@ const SignUp: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="Phone" className="block text-sm font-medium text-gray-700">Phone Number</label>
+                <label htmlFor="Phone" className="block text-sm font-medium text-gray-100">Phone Number</label>
                 <input
                   type="number"
                   id="Phone"
@@ -214,7 +215,7 @@ const SignUp: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-100">Email Address</label>
                 <input
                   type="email"
                   id="email"
@@ -229,7 +230,7 @@ const SignUp: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-100">Password</label>
                 <input
                   type="password"
                   id="password"
@@ -241,7 +242,7 @@ const SignUp: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-100">Confirm Password</label>
                 <input
                   type="password"
                   id="confirmPassword"
@@ -262,11 +263,11 @@ const SignUp: React.FC = () => {
               required
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
             />
-            <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
+            <label htmlFor="terms" className="ml-2 block text-sm text-gray-100">
               I agree to the{' '}
-              <a href="/terms" className="text-indigo-600 hover:text-indigo-500">Terms of Service</a>{' '}
+              <a href="/terms" className="text-indigo-200 hover:text-indigo-400">Terms of Service</a>{' '}
               and{' '}
-              <a href="/privacy" className="text-indigo-600 hover:text-indigo-500">Privacy Policy</a>
+              <a href="/privacy" className="text-indigo-200 hover:text-indigo-400">Privacy Policy</a>
             </label>
           </div>
 
@@ -279,7 +280,7 @@ const SignUp: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ${
+            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition ${
               isLoading ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
@@ -287,9 +288,9 @@ const SignUp: React.FC = () => {
           </button>
         </form>
 
-        <div className="text-center text-sm">
+        <div className="text-center text-white text-sm">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link to="/login" className="font-medium text-indigo-200 hover:text-indigo-100">
             Log in
           </Link>
         </div>
