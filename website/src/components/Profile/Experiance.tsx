@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Building, Calendar, User } from 'lucide-react';
-import { useAuth } from '../AuthContext';// adjust the path to your AuthContext
+import { useAuth } from '../AuthContext'; // adjust the path as needed
 
 interface Experience {
   id: string;
@@ -35,7 +35,7 @@ const ExperienceManager: React.FC = () => {
         console.error('Error parsing saved experiences:', error);
       }
     }
-  }, [userEmail]);
+  }, [storageKey]); // ✅ FIXED: include storageKey as dependency
 
   const addExperience = () => {
     setExperiences([...experiences, {

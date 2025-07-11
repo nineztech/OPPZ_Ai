@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Briefcase,
   ChartBar,
@@ -11,11 +11,10 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer
 } from 'recharts';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import classNames from 'classnames';
 dayjs.extend(isBetween);
 
 interface Job {
@@ -38,23 +37,10 @@ interface JobStats {
 
 const extensionId = 'hmjkmddeonifkflejbicnapamlfejdim';
 
-const StatCard: React.FC<{
-  label: string;
-  count: number;
-  icon: JSX.Element;
-  color: string;
-}> = ({ label, count, icon, color }) => (
-  <div className={`bg-white p-4 rounded-xl shadow text-center`}>
-    <div className={`text-3xl mb-2 ${color}`}>{icon}</div>
-    <div className="text-2xl font-bold">{count}</div>
-    <div className="text-sm text-gray-600">{label}</div>
-  </div>
-);
-
 const JobApplicationHistory: React.FC = () => {
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
-  const [filter, setFilter] = useState<'all' | 'external' | 'auto'>('all');
+  
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -70,7 +56,7 @@ const JobApplicationHistory: React.FC = () => {
     max: 'Max',
   };
 
-  const buildChartData = (jobs: Job[]) => {
+  const buildChartData = useCallback((jobs: Job[]) => {
     const today = dayjs();
     let start: dayjs.Dayjs;
     let end: dayjs.Dayjs;
@@ -116,9 +102,29 @@ const JobApplicationHistory: React.FC = () => {
     }));
 
     setChartData(chartArray);
-  };
+  }, [graphRange]);
 
-  const loadJobData = async () => {
+  const loadStats = useCallback(async () => {
+    try {
+      const response: any = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          extensionId,
+          { from: 'website', action: 'getJobStats' },
+          (res) => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve(res);
+          }
+        );
+      });
+      if (response?.success) {
+        setStats(response.data);
+      }
+    } catch (err) {
+      console.error('Failed to load stats');
+    }
+  }, []);
+
+  const loadJobData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -150,44 +156,20 @@ const JobApplicationHistory: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadStats]);
 
-  const loadStats = async () => {
-    try {
-      const response: any = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage(
-          extensionId,
-          { from: 'website', action: 'getJobStats' },
-          (res) => {
-            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-            else resolve(res);
-          }
-        );
-      });
-      if (response?.success) {
-        setStats(response.data);
-      }
-    } catch (err) {
-      console.error('Failed to load stats');
-    }
-  };
+  const updateFilter = useCallback(() => {
+  let jobs = [...allJobs];
+  if (search) {
+    jobs = jobs.filter(
+      (j) =>
+        j.title.toLowerCase().includes(search.toLowerCase()) ||
+        j.companyName.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+  setFilteredJobs(jobs);
+}, [allJobs, search]);
 
-  const updateFilter = () => {
-    let jobs = [...allJobs];
-    if (filter === 'external') {
-      jobs = jobs.filter((j) => !j.isAutoApplied);
-    } else if (filter === 'auto') {
-      jobs = jobs.filter((j) => j.isAutoApplied);
-    }
-    if (search) {
-      jobs = jobs.filter(
-        (j) =>
-          j.title.toLowerCase().includes(search.toLowerCase()) ||
-          j.companyName.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-    setFilteredJobs(jobs);
-  };
 
   const deleteJob = async (id: string, isAutoApplied: boolean) => {
     if (!window.confirm('Are you sure you want to delete this job application?')) return;
@@ -304,15 +286,19 @@ const JobApplicationHistory: React.FC = () => {
 
   useEffect(() => {
     loadJobData();
-  }, []);
+  }, [loadJobData]);
 
   useEffect(() => {
     updateFilter();
-  }, [filter, search, allJobs]);
+  }, [search, allJobs, updateFilter]);
 
   useEffect(() => {
     buildChartData(allJobs);
-  }, [graphRange, allJobs]);
+  }, [graphRange, allJobs, buildChartData]);
+
+  // RENDER CODE REMAINS THE SAME (starting with return...)
+
+
 
 const StatCard = ({
   label,

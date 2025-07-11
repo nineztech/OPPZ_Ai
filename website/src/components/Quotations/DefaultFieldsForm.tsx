@@ -93,28 +93,7 @@ const DefaultFieldsForm: React.FC = () => {
     }
   };
 
-  // Debug function to check extension storage
-  const debugExtensionStorage = () => {
-    if (!isChromeExtension()) {
-      setDebugInfo('Not in Chrome Extension environment');
-      return;
-    }
-
-    chrome.runtime.sendMessage(
-      EXTENSION_ID,
-      {
-        from: 'website',
-        action: 'getFormControlData',
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          setDebugInfo(`Error: ${chrome.runtime.lastError.message}`);
-        } else {
-          setDebugInfo(JSON.stringify(response, null, 2));
-        }
-      }
-    );
-  };
+  
 
   const handleConfirm = async () => {
     if (!isChromeExtension()) {

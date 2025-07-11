@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SendHorizonal, Trash2, Filter, ArrowUp, ArrowDown } from 'lucide-react';
+import { SendHorizonal, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface DropdownOption {
   value: string;

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { SendHorizonal, Trash2 } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Trash2 } from 'lucide-react';
 
 const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim'; // Replace with your real one
 
@@ -39,8 +39,10 @@ const FilterSettingsConfigs: React.FC = () => {
     chrome.runtime &&
     typeof chrome.runtime.sendMessage === 'function';
 
-  const fetchData = () => {
+  // ✅ Memoized fetchData to fix dependency warning
+  const fetchData = useCallback(() => {
     if (!isExtension()) return;
+
     chrome.runtime.sendMessage(
       EXTENSION_ID,
       { from: 'website', action: 'getFilterSettings' },
@@ -59,11 +61,11 @@ const FilterSettingsConfigs: React.FC = () => {
         }
       }
     );
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const sendUpdate = (key: string, value: any) => {
     chrome.runtime.sendMessage(EXTENSION_ID, {
@@ -107,7 +109,7 @@ const FilterSettingsConfigs: React.FC = () => {
   return (
     <div className="p-4 space-y-6 bg-gray-100">
       <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-blue-500 to-purple-600">Exclusions</h1>
-      
+
       {/* Tabs */}
       <div className="flex gap-4 border-b pb-2 mb-4">
         {FILTERS.map(({ key, label }) => (
@@ -157,7 +159,7 @@ const FilterSettingsConfigs: React.FC = () => {
                     handleUpdateWord(activeTab, index, val);
                   }}
                 >
-                   Update
+                  Update
                 </button>
                 <button
                   className="bg-red-500 text-white px-1 py-1 rounded hover:bg-red-600"

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Users, Eye, Trash2, Download, Mail, Phone,
+  Users, Trash2, Download, Mail, Phone,
   MapPin, Calendar, DollarSign, FileText, RefreshCw,
-  User, CheckCircle, Clock, Briefcase, Award, TrendingUp
+  User, CheckCircle, Briefcase
 } from 'lucide-react';
 import config from '../../config';
 
@@ -128,9 +128,7 @@ const ProfilesList: React.FC = () => {
     };
   };
 
-  useEffect(() => {
-    if (userEmail) fetchProfiles();
-  }, [userEmail]);
+   
 
   if (loading) {
     return (

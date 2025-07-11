@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   PlayCircle,
   CheckSquare,
@@ -194,31 +194,30 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({
  if (external) {
   return (
     <li>
-      <a
-        href={restricted ? '#' : to}
-        target={restricted ? '_self' : '_blank'}
-        rel="noopener noreferrer"
-        onClick={restricted ? onRestricted : undefined}
-        className={`flex items-center px-5 py-3 transition cursor-pointer relative ${
-          restricted
-            ? 'hover:bg-red-900/20 text-gray-400'
-            : 'hover:bg-[#34495e] text-white'
-        }`}
-      >
-        <div className="mr-3">
-          {restricted ? (
+      {restricted ? (
+        <button
+          onClick={onRestricted}
+          className="flex items-center px-5 py-3 transition cursor-pointer relative hover:bg-red-900/20 text-gray-400 w-full text-left"
+        >
+          <div className="mr-3">
             <Lock size={20} className="text-red-400" />
-          ) : (
-            <div className="text-white">{icon}</div>
-          )}
-        </div>
-        <span className={restricted ? 'text-gray-400' : ''}>{text}</span>
-        {restricted && (
+          </div>
+          <span>{text}</span>
           <div className="absolute right-2">
             <Lock size={16} className="text-red-400" />
           </div>
-        )}
-      </a>
+        </button>
+      ) : (
+        <a
+          href={to}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center px-5 py-3 transition cursor-pointer relative hover:bg-[#34495e] text-white"
+        >
+          <div className="mr-3 text-white">{icon}</div>
+          <span>{text}</span>
+        </a>
+      )}
     </li>
   );
 }

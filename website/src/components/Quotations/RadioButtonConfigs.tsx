@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SendHorizonal, Trash2, Filter, ArrowUp, ArrowDown } from 'lucide-react';
+import { SendHorizonal, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface RadioOption {
   value: string;
@@ -213,7 +213,7 @@ const RadioButtonConfigs: React.FC = () => {
           <p className="text-gray-500 col-span-2 text-center">No radio button configurations found.</p>
         ) : (
           sortedConfigs.map(config => {
-            const currentValue = config.options.find(opt => opt.selected)?.value;
+
             return (
               <div
                 key={config.placeholderIncludes}

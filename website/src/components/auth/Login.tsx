@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext'; // Import from AuthContext
-import config from '../../config';
+ 
 
 interface LoginFormData {
   email: string;
@@ -32,7 +32,7 @@ const Login: React.FC = () => {
   });
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006";
+  const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006/api";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

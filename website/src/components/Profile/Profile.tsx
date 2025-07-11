@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Check, FileText, UserCog, Upload, User, Save } from 'lucide-react';
+import { Check, UserCog, Upload, User, Save } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
-import { useNavigate } from 'react-router-dom';
+ 
 import FilterSettingsConfigs from './FilterSettingsConfig';
 import SkillsManager from './Skills';
 import ExperienceManager from './Experiance';
@@ -50,7 +50,7 @@ const ProfileBuilder: React.FC = () => {
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState('Personal Details');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const navigate = useNavigate();
+   
   const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006";
 
   // Required fields for profile completion
@@ -115,14 +115,9 @@ const ProfileBuilder: React.FC = () => {
     return statusData;
   };
 
-  // Update status whenever data, resume, or submission status changes
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      updateProfileStatus();
-    }, 100); // Small delay to ensure state is updated
+   
     
-    return () => clearTimeout(timeoutId);
-  }, [data, resumeFile, selectedFile, isSubmitted, profileExists]);
+ 
 
   // Load existing profile data
   useEffect(() => {
@@ -158,7 +153,7 @@ const ProfileBuilder: React.FC = () => {
     };
 
     loadProfile();
-  }, []);
+  }, [api_baseUrl]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -339,13 +334,7 @@ const ProfileBuilder: React.FC = () => {
     }
   };
 
-  const handleNavigate = () => {
-    if (!isProfileComplete()) {
-      alert("⚠️ Please complete and submit your profile before proceeding.");
-      return;
-    }
-    navigate('/another-page');
-  };
+  
 
   // Calculate completion status for UI
   const requiredFieldsFilled = requiredFields.every(field => {
