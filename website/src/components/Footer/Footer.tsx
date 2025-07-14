@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import { Facebook, Instagram, Youtube } from 'lucide-react';
 
-interface FooterProps {}
-
-const Footer: React.FC<FooterProps> = () => {
+const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle subscription logic here
     console.log('Subscribing email:', email);
   };
 
@@ -24,35 +21,36 @@ const Footer: React.FC<FooterProps> = () => {
               </div>
               <span className="text-xl font-semibold">OPPZ Ai</span>
             </div>
-            
+
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              {/* Replace # with real links */}
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                 <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center">
                   <span className="text-white font-bold">𝕏</span>
                 </div>
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                 <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
                   <Youtube size={16} className="text-white" />
                 </div>
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                 <div className="w-8 h-8 bg-black rounded flex items-center justify-center border border-white">
                   <span className="text-white font-bold">🎵</span>
                 </div>
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded flex items-center justify-center">
                   <Instagram size={16} className="text-white" />
                 </div>
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                 <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
                   <Facebook size={16} className="text-white" />
                 </div>
               </a>
             </div>
-            
+
             <div className="text-gray-400 text-sm">
               support@oppzai.com
             </div>
@@ -64,9 +62,9 @@ const Footer: React.FC<FooterProps> = () => {
             <div>
               <h3 className="text-white font-semibold mb-4">Product</h3>
               <ul className="space-y-3">
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Home</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Features</a></li>
-                <li><a href="#" className="text-purple-400 hover:text-purple-300 transition-colors">Pricing</a></li>
+                <li><a href="/" className="text-gray-400 hover:text-white transition-colors">Home</a></li>
+                <li><a href="/features" className="text-gray-400 hover:text-white transition-colors">Features</a></li>
+                <li><a href="/pricing" className="text-purple-400 hover:text-purple-300 transition-colors">Pricing</a></li>
                 <li><a href="/Login" className="text-gray-400 hover:text-white transition-colors">Login</a></li>
                 <li><a href="/SignUp" className="text-gray-400 hover:text-white transition-colors">SignUp</a></li>
               </ul>
@@ -79,7 +77,6 @@ const Footer: React.FC<FooterProps> = () => {
                 <li><a href="/TermsAndConditions" className="text-gray-400 hover:text-white transition-colors">Terms & Conditions</a></li>
                 <li><a href="/PrivacyPolicy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
                 <li><a href="/RefundPolicy" className="text-gray-400 hover:text-white transition-colors">Refund Policy</a></li>
-                 
               </ul>
             </div>
           </div>
