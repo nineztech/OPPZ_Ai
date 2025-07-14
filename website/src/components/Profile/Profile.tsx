@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useMemo,useRef,useCallback, useEffect } from 'react';
 import { Check, UserCog, Upload, User, Save } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
@@ -6,7 +6,7 @@ import 'react-phone-input-2/lib/style.css';
 import FilterSettingsConfigs from './FilterSettingsConfig';
 import SkillsManager from './Skills';
 import ExperienceManager from './Experiance';
-import config from '../../config';
+ 
 
 interface ProfileData {
   firstName: string;
@@ -23,6 +23,23 @@ interface ProfileData {
   age: string;
   noticePeriod: string;
   additionalInfo: string;
+}
+
+interface ProfileStatus {
+  completed: boolean;
+  timestamp: number;
+  lastUpdated: string;
+  requiredFieldsFilled: boolean;
+  resumeUploaded: boolean;
+  submitted: boolean;
+}
+
+interface ExistingProfile extends ProfileData {
+  id: number;
+  resume: string | null;
+  resumeUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const initialState: ProfileData = {
@@ -47,14 +64,23 @@ const ProfileBuilder: React.FC = () => {
   const [resumeFile, setResumeFile] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [profileExists, setProfileExists] = useState<boolean>(false);
+  const [profileId, setProfileId] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState('Personal Details');
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>({
+    completed: false,
+    timestamp: 0,
+    lastUpdated: '',
+    requiredFieldsFilled: false,
+    resumeUploaded: false,
+    submitted: false
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
    
   const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006";
 
   // Required fields for profile completion
-  const requiredFields = ['firstName', 'lastName', 'email', 'experience', 'city', 'phone', 'currentSalary', 'expectedSalary'];
+  const requiredFields = useMemo(() => ['firstName', 'lastName', 'email', 'experience', 'city', 'phone', 'currentSalary', 'expectedSalary'], []);
 
   // Helper function to safely check if a field value is filled
   const isFieldFilled = (value: any): boolean => {
@@ -65,82 +91,128 @@ const ProfileBuilder: React.FC = () => {
   };
 
   // Function to check if profile is complete
-  const isProfileComplete = () => {
-    // Check if all required fields are filled
-    const allRequiredFieldsFilled = requiredFields.every(field => {
-      const value = data[field as keyof ProfileData];
-      return isFieldFilled(value);
-    });
+  // const isProfileComplete = (): boolean => {
+  //   // Check if all required fields are filled
+  //   const allRequiredFieldsFilled = requiredFields.every(field => {
+  //     const value = data[field as keyof ProfileData];
+  //     return isFieldFilled(value);
+  //   });
     
-    // Check if resume is uploaded
-    const resumeUploaded = !!(resumeFile && (selectedFile || profileExists));
+  //   // Check if resume is uploaded
+  //   const resumeUploaded = !!(resumeFile && (selectedFile || profileExists));
     
-    // Profile is complete if all required fields are filled, resume is uploaded, and profile is submitted
-    return allRequiredFieldsFilled && resumeUploaded && isSubmitted;
-  };
+  //   // Profile is complete if all required fields are filled, resume is uploaded, and profile is submitted
+  //   return allRequiredFieldsFilled && resumeUploaded && isSubmitted;
+  // };
 
   // Function to update profile status
-  const updateProfileStatus = () => {
-    const requiredFieldsStatus = requiredFields.every(field => {
-      const value = data[field as keyof ProfileData];
-      return isFieldFilled(value);
-    });
-    
-    const resumeStatus = !!(resumeFile && (selectedFile || profileExists));
-    const complete = isProfileComplete();
-    
-    const statusData = {
-      completed: complete,
-      timestamp: Date.now(),
-      lastUpdated: new Date().toISOString(),
-      requiredFieldsFilled: requiredFieldsStatus,
-      resumeUploaded: resumeStatus,
-      submitted: isSubmitted
-    };
-    
-    console.log('Updating profile status:', statusData);
-    
-    // Update localStorage
-    try {
-      localStorage.setItem('profileStatus', JSON.stringify(statusData));
-    } catch (error) {
-      console.error('Failed to update localStorage:', error);
-    }
-    
-    // Dispatch event to notify other components
-    window.dispatchEvent(new CustomEvent('profileStatusChanged', { 
-      detail: statusData
-    }));
-    
-    return statusData;
+ const updateProfileStatus = useCallback((): ProfileStatus => {
+  const requiredFieldsStatus = requiredFields.every(field => {
+    const value = data[field as keyof ProfileData];
+    return isFieldFilled(value);
+  });
+
+  const resumeStatus = !!(resumeFile && (selectedFile || profileExists));
+  const complete = requiredFieldsStatus && resumeStatus && isSubmitted;
+
+  const statusData: ProfileStatus = {
+    completed: complete,
+    timestamp: Date.now(),
+    lastUpdated: new Date().toISOString(),
+    requiredFieldsFilled: requiredFieldsStatus,
+    resumeUploaded: resumeStatus,
+    submitted: isSubmitted
   };
 
-   
-    
- 
+  console.log('Updating profile status:', statusData);
 
-  // Load existing profile data
+  setProfileStatus(statusData);
+
+  try {
+    if (typeof Storage !== 'undefined') {
+      localStorage.setItem('profileStatus', JSON.stringify(statusData));
+    }
+  } catch (error) {
+    console.warn('localStorage not available:', error);
+  }
+
+  if (typeof window !== 'undefined' && window.dispatchEvent) {
+    window.dispatchEvent(new CustomEvent('profileStatusChanged', {
+      detail: statusData
+    }));
+  }
+
+  return statusData;
+}, [data, resumeFile, selectedFile, profileExists, isSubmitted, requiredFields]); // ✅ added requiredFields
+
+
+
+  // Load existing profile data and status
   useEffect(() => {
     const loadProfile = async () => {
       try {
+        // Load from localStorage if available
+        if (typeof Storage !== 'undefined') {
+          const storedStatus = localStorage.getItem('profileStatus');
+          if (storedStatus) {
+            const parsedStatus = JSON.parse(storedStatus);
+            setProfileStatus(parsedStatus);
+          }
+        }
+
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           const userEmail = parsedUser?.email;
 
           if (userEmail) {
-            const response = await fetch(`${api_baseUrl}/api/profiles`);
-            const json = await response.json();
-            const profile = json.profiles?.find((p: any) => p.email === userEmail);
+            console.log("🔍 Loading profile for email:", userEmail);
             
-            if (profile) {
-              const { resume, ...rest } = profile;
-              setData(rest);
-              setResumeFile(resume || null);
-              setProfileExists(true);
-              setIsSubmitted(true);
-            } else {
+            try {
+              // Use the email-specific endpoint
+              const response = await fetch(`${api_baseUrl}/api/profile/email/${encodeURIComponent(userEmail)}`);
+              console.log("📡 Profile fetch response status:", response.status);
+              
+              if (response.ok) {
+                const result = await response.json();
+                console.log("✅ Profile fetch result:", result);
+                
+                if (result.success && result.profile) {
+                  const profile: ExistingProfile = result.profile;
+                  const { id, resume, resumeUrl, createdAt, updatedAt, ...profileData } = profile;
+                  
+                  setData(profileData);
+                  setResumeFile(resume);
+                  setProfileExists(true);
+                  setProfileId(id);
+                  setIsSubmitted(true);
+                  
+                  console.log("✅ Profile loaded successfully:", {
+                    id,
+                    email: profileData.email,
+                    resumeFile: resume
+                  });
+                } else {
+                  console.log("❌ Profile not found in response");
+                  setProfileExists(false);
+                  setProfileId(null);
+                  setIsSubmitted(false);
+                }
+              } else if (response.status === 404) {
+                console.log("ℹ️ Profile not found (404) - user needs to create profile");
+                setProfileExists(false);
+                setProfileId(null);
+                setIsSubmitted(false);
+              } else {
+                console.error("❌ Profile fetch failed:", response.statusText);
+                setProfileExists(false);
+                setProfileId(null);
+                setIsSubmitted(false);
+              }
+            } catch (fetchError) {
+              console.error("❌ Network error fetching profile:", fetchError);
               setProfileExists(false);
+              setProfileId(null);
               setIsSubmitted(false);
             }
           }
@@ -148,12 +220,23 @@ const ProfileBuilder: React.FC = () => {
       } catch (error) {
         console.error('Error loading profile:', error);
         setProfileExists(false);
+        setProfileId(null);
         setIsSubmitted(false);
       }
     };
 
     loadProfile();
   }, [api_baseUrl]);
+
+  // Update status whenever relevant data changes
+ useEffect(() => {
+  const timeoutId = setTimeout(() => {
+    updateProfileStatus();
+  }, 300); // Debounce to avoid too many updates
+
+  return () => clearTimeout(timeoutId);
+}, [data, resumeFile, selectedFile, profileExists, isSubmitted, updateProfileStatus]);
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -235,6 +318,8 @@ const ProfileBuilder: React.FC = () => {
 
   const handleSubmit = async () => {
     console.log("🚀 === DEBUGGING FRONTEND SUBMISSION ===");
+    console.log("🔍 Profile exists:", profileExists);
+    console.log("🔍 Profile ID:", profileId);
     
     // Check if all required fields are filled
     const allRequiredFieldsFilled = requiredFields.every(field => {
@@ -256,10 +341,8 @@ const ProfileBuilder: React.FC = () => {
       return;
     }
 
-    // If updating existing profile and no new file selected, we can proceed
-    if (profileExists && !selectedFile) {
-      console.log("📎 Updating existing profile without new file");
-    } else if (selectedFile) {
+    // Validate selected file if provided
+    if (selectedFile) {
       console.log("📎 Selected file details:", {
         name: selectedFile.name,
         size: selectedFile.size,
@@ -296,10 +379,26 @@ const ProfileBuilder: React.FC = () => {
     }
 
     try {
-      console.log("🌐 Making API request to:", `${config.apiBaseUrl}/api/profile`);
+      let url: string;
+      let method: string;
       
-      const response = await fetch(`${api_baseUrl}/api/profile`, {
-        method: 'POST',
+      if (profileExists && profileId) {
+        // Update existing profile
+        url = `${api_baseUrl}/api/profile/${profileId}`;
+        method = 'PUT';
+        console.log("🔄 Updating existing profile");
+      } else {
+        // Create new profile
+        url = `${api_baseUrl}/api/profile/create`;
+        method = 'POST';
+        console.log("🆕 Creating new profile");
+      }
+      
+      console.log("🌐 Making API request to:", url);
+      console.log("🌐 Method:", method);
+      
+      const response = await fetch(url, {
+        method: method,
         body: formData,
       });
 
@@ -309,39 +408,90 @@ const ProfileBuilder: React.FC = () => {
         const result = await response.json();
         console.log("✅ Success response:", result);
         
-        // Set submission status to true
-        setIsSubmitted(true);
-        setProfileExists(true);
-        
-        // Show success message
-        alert('✅ Profile submitted successfully!');
-        
-        // Force status update after a short delay
-        setTimeout(() => {
-          updateProfileStatus();
-        }, 200);
-        
+        if (result.success && result.profile) {
+          const profile: ExistingProfile = result.profile;
+          const { id, resume, resumeUrl, createdAt, updatedAt, ...profileData } = profile;
+          
+          // Update local state with response data
+          setData(profileData);
+          setResumeFile(resume);
+          setProfileId(id);
+          setIsSubmitted(true);
+          setProfileExists(true);
+          
+          // Clear selected file after successful submission
+          setSelectedFile(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+          
+          // Show success message
+          const action = profileExists ? 'updated' : 'created';
+          alert(`✅ Profile ${action} successfully!`);
+          
+          // Force status update immediately
+          setTimeout(() => {
+            updateProfileStatus();
+          }, 100);
+        } else {
+          console.error("❌ Invalid response format:", result);
+          alert('🚫 Error: Invalid response from server');
+        }
       } else {
         const errorText = await response.text();
         console.error("❌ Error response:", errorText);
-        alert(`🚫 Error: ${response.statusText}\nDetails: ${errorText}`);
+        
+        // Handle specific error cases
+        if (response.status === 409) {
+          alert('🚫 Profile already exists. Please try updating instead.');
+        } else if (response.status === 404) {
+          alert('🚫 Profile not found. Please try creating a new profile.');
+        } else if (response.status === 400) {
+          alert(`🚫 Validation Error: ${errorText}`);
+        } else {
+          alert(`🚫 Error: ${response.statusText}\nDetails: ${errorText}`);
+        }
       }
     } catch (error) {
       console.error("❌ Network error:", error);
       if (error instanceof Error) {
         alert(`Network error: ${error.message}`);
+      } else {
+        alert('Network error occurred. Please try again.');
       }
     }
   };
 
-  
+  // Function to check if user can access certain features
+  const canAccessFeature = (feature: string): boolean => {
+    switch (feature) {
+      case 'exclusions':
+        return profileStatus.requiredFieldsFilled;
+      case 'skills':
+        return profileStatus.requiredFieldsFilled && profileStatus.resumeUploaded;
+      case 'experience':
+        return profileStatus.completed;
+      default:
+        return true;
+    }
+  };
 
-  // Calculate completion status for UI
-  const requiredFieldsFilled = requiredFields.every(field => {
-    const value = data[field as keyof ProfileData];
-    return isFieldFilled(value);
-  });
-  
+  // Function to handle tab switching with restrictions
+  const handleTabChange = (tab: string) => {
+    const featureMap: { [key: string]: string } = {
+      'Exclusions': 'exclusions',
+      'Skills': 'skills',
+      'Experience': 'experience'
+    };
+
+    if (featureMap[tab] && !canAccessFeature(featureMap[tab])) {
+      alert(`⚠️ Please complete your profile to access ${tab}. Fill required fields, upload resume, and submit your profile.`);
+      return;
+    }
+
+    setActiveTab(tab);
+  };
+
   const calculateGrowthExpectation = (current: string, expected: string) => {
     const currentNum = parseInt(current.replace(/[^\d]/g, ''));
     const expectedNum = parseInt(expected.replace(/[^\d]/g, ''));
@@ -350,9 +500,6 @@ const ProfileBuilder: React.FC = () => {
     }
     return 0;
   };
-
-  const resumeUploaded = !!(resumeFile && (selectedFile || profileExists));
-  const allComplete = isProfileComplete();
 
   return (
     <div className="min-h-screen rounded-xl p-4 ml-6 -mt-2 flex">
@@ -369,33 +516,56 @@ const ProfileBuilder: React.FC = () => {
             {/* Tabs */}
             <div className="mb-6 border-b border-gray-200 m-8">
               <div className="flex space-x-6">
-                {['Personal Details', 'Exclusions', 'Skills', 'Experience'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 font-semibold transition-all ${
-                      activeTab === tab
-                        ? 'border-b-2 border-blue-500 text-blue-700'
-                        : 'text-gray-600 hover:text-blue-500'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+                {['Personal Details', 'Exclusions', 'Skills', 'Experience'].map((tab) => {
+                  const isLocked = tab !== 'Personal Details' && !canAccessFeature(tab.toLowerCase());
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => handleTabChange(tab)}
+                      disabled={isLocked}
+                      className={`px-4 py-2 font-semibold transition-all relative ${
+                        activeTab === tab
+                          ? 'border-b-2 border-blue-500 text-blue-700'
+                          : isLocked
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-gray-600 hover:text-blue-500'
+                      }`}
+                    >
+                      {tab}
+                      {isLocked && (
+                        <span className="ml-1 text-xs">🔒</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Debug info - Uncomment to see status
-            <div className="mb-4 p-3 text-white bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-sm m-8">
-              <strong>Debug Info:</strong><br/>
-              Required Fields Filled: {requiredFieldsFilled ? '✅' : '❌'}<br/>
-              Resume Uploaded: {resumeUploaded ? '✅' : '❌'}<br/>
-              Profile Submitted: {isSubmitted ? '✅' : '❌'}<br/>
-              Profile Exists: {profileExists ? '✅' : '❌'}<br/>
-              Profile Complete: {allComplete ? '✅' : '❌'}<br/>
-              Resume File: {resumeFile ? resumeFile : 'None'}<br/>
-              Selected File: {selectedFile ? selectedFile.name : 'None'}
-            </div> */}
+            {/* Status Display */}
+            <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl text-sm m-8 border border-blue-200">
+              <div className="flex justify-between items-center">
+                <div>
+                  <strong className="text-gray-800">Profile Status:</strong>
+                  <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                    profileStatus.completed 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-orange-100 text-orange-800'
+                  }`}>
+                    {profileStatus.completed ? 'Complete' : 'Incomplete'}
+                  </span>
+                  {profileExists && (
+                    <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Profile ID: {profileId}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right text-xs text-gray-600">
+                  {profileStatus.lastUpdated && (
+                    <div>Last updated: {new Date(profileStatus.lastUpdated).toLocaleString()}</div>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {activeTab === 'Personal Details' && (
               <div className="p-6 space-y-6">
@@ -515,21 +685,58 @@ const ProfileBuilder: React.FC = () => {
                 {/* Submit Button */}
                 <button
                   onClick={handleSubmit}
-                  disabled={!requiredFieldsFilled || !resumeUploaded}
+                  disabled={!profileStatus.requiredFieldsFilled || !profileStatus.resumeUploaded}
                   className={`w-full mt-6 py-3 rounded-lg font-bold transition-all ${
-                    requiredFieldsFilled && resumeUploaded
+                    profileStatus.requiredFieldsFilled && profileStatus.resumeUploaded
                       ? 'bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 text-white'
                       : 'bg-gray-400 text-gray-700 cursor-not-allowed'
                   }`}
                 >
-                  {isSubmitted ? 'Update Profile' : 'Save Profile'}
+                  {profileExists ? 'Update Profile' : 'Create Profile'}
                 </button>
               </div>
             )}
 
-            {activeTab === 'Exclusions' && <div className="text-gray-700"><FilterSettingsConfigs /></div>}
-            {activeTab === 'Skills' && <div className="text-gray-700"><SkillsManager /></div>}
-            {activeTab === 'Experience' && <div className="text-gray-700"><ExperienceManager /></div>}
+            {activeTab === 'Exclusions' && (
+              <div className="text-gray-700">
+                {canAccessFeature('exclusions') ? (
+                  <FilterSettingsConfigs />
+                ) : (
+                  <div className="p-8 text-center">
+                    <div className="text-6xl mb-4">🔒</div>
+                    <h3 className="text-xl font-semibold mb-2">Feature Locked</h3>
+                    <p className="text-gray-600">Complete your basic profile to access exclusion settings.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'Skills' && (
+              <div className="text-gray-700">
+                {canAccessFeature('skills') ? (
+                  <SkillsManager />
+                ) : (
+                  <div className="p-8 text-center">
+                    <div className="text-6xl mb-4">🔒</div>
+                    <h3 className="text-xl font-semibold mb-2">Feature Locked</h3>
+                    <p className="text-gray-600">Complete your profile and upload resume to access skills management.</p>
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'Experience' && (
+              <div className="text-gray-700">
+                {canAccessFeature('experience') ? (
+                  <ExperienceManager />
+                ) : (
+                  <div className="p-8 text-center">
+                    <div className="text-6xl mb-4">🔒</div>
+                    <h3 className="text-xl font-semibold mb-2">Feature Locked</h3>
+                    <p className="text-gray-600">Complete and submit your entire profile to access experience management.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -543,29 +750,29 @@ const ProfileBuilder: React.FC = () => {
 
         <div className="space-y-4 mb-8">
           <div className="flex items-center space-x-3">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${requiredFieldsFilled ? 'bg-green-500' : 'bg-white'}`}>
-              {requiredFieldsFilled ? <Check className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-black" />}
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${profileStatus.requiredFieldsFilled ? 'bg-green-500' : 'bg-white'}`}>
+              {profileStatus.requiredFieldsFilled ? <Check className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-black" />}
             </div>
             <span className="text-white text-sm">Fill required fields</span>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${resumeUploaded ? 'bg-green-500' : 'bg-white'}`}>
-              {resumeUploaded ? <Check className="w-4 h-4 text-white" /> : <Upload className="w-4 h-4 text-black" />}
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${profileStatus.resumeUploaded ? 'bg-green-500' : 'bg-white'}`}>
+              {profileStatus.resumeUploaded ? <Check className="w-4 h-4 text-white" /> : <Upload className="w-4 h-4 text-black" />}
             </div>
             <span className="text-white text-sm">Upload resume</span>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isSubmitted ? 'bg-green-500' : 'bg-white'}`}>
-              {isSubmitted ? <Check className="w-4 h-4 text-white" /> : <Save className="w-4 h-4 text-black" />}
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${profileStatus.submitted ? 'bg-green-500' : 'bg-white'}`}>
+              {profileStatus.submitted ? <Check className="w-4 h-4 text-white" /> : <Save className="w-4 h-4 text-black" />}
             </div>
             <span className="text-white text-sm">Submit your profile</span>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${allComplete ? 'bg-green-500' : 'bg-white'}`}>
-              {allComplete ? <Check className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-black" />}
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${profileStatus.completed ? 'bg-green-500' : 'bg-white'}`}>
+              {profileStatus.completed ? <Check className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-black" />}
             </div>
             <span className="text-white text-sm">Profile Complete</span>
           </div>
