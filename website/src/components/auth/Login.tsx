@@ -95,7 +95,7 @@ localStorage.setItem('userEmail', data.user.email);
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-100">
-                Email Address
+                Email/Username
               </label>
               <input
                 type="email"

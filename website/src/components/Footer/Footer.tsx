@@ -1,0 +1,126 @@
+import React, { useState } from 'react';
+import { Facebook, Instagram, Youtube } from 'lucide-react';
+
+interface FooterProps {}
+
+const Footer: React.FC<FooterProps> = () => {
+  const [email, setEmail] = useState('');
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Handle subscription logic here
+    console.log('Subscribing email:', email);
+  };
+
+  return (
+    <footer className="bg-black text-white py-12 px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          {/* Logo and Social Media */}
+          <div className="space-y-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-white rounded-sm flex items-center justify-center">
+                <span className="text-black font-bold text-sm">A</span>
+              </div>
+              <span className="text-xl font-semibold">OPPZ Ai</span>
+            </div>
+            
+            <div className="flex space-x-4">
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center">
+                  <span className="text-white font-bold">𝕏</span>
+                </div>
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
+                  <Youtube size={16} className="text-white" />
+                </div>
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <div className="w-8 h-8 bg-black rounded flex items-center justify-center border border-white">
+                  <span className="text-white font-bold">🎵</span>
+                </div>
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded flex items-center justify-center">
+                  <Instagram size={16} className="text-white" />
+                </div>
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                  <Facebook size={16} className="text-white" />
+                </div>
+              </a>
+            </div>
+            
+            <div className="text-gray-400 text-sm">
+              support@oppzai.com
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="grid grid-cols-2 gap-8">
+            {/* Product Column */}
+            <div>
+              <h3 className="text-white font-semibold mb-4">Product</h3>
+              <ul className="space-y-3">
+                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Home</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Features</a></li>
+                <li><a href="#" className="text-purple-400 hover:text-purple-300 transition-colors">Pricing</a></li>
+                <li><a href="/Login" className="text-gray-400 hover:text-white transition-colors">Login</a></li>
+                <li><a href="/SignUp" className="text-gray-400 hover:text-white transition-colors">SignUp</a></li>
+              </ul>
+            </div>
+
+            {/* Company Column */}
+            <div>
+              <h3 className="text-white font-semibold mb-4">Company</h3>
+              <ul className="space-y-3">
+                <li><a href="/TermsAndConditions" className="text-gray-400 hover:text-white transition-colors">Terms & Conditions</a></li>
+                <li><a href="/PrivacyPolicy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><a href="/RefundPolicy" className="text-gray-400 hover:text-white transition-colors">Refund Policy</a></li>
+                 
+              </ul>
+            </div>
+          </div>
+
+          {/* Newsletter Signup */}
+          <div>
+            <h3 className="text-white font-semibold mb-4">Stay Connected</h3>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="text-gray-400 text-sm mb-2 block">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-transparent border-b border-gray-600 py-2 px-0 text-white placeholder-gray-400 focus:border-white focus:outline-none"
+                  placeholder="Enter your email"
+                  required
+                />
+              </div>
+              <button
+                onClick={handleSubscribe}
+                className="bg-transparent border border-white text-white px-6 py-2 rounded-full hover:bg-white hover:text-black transition-colors font-medium"
+              >
+                SUBSCRIBE
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="mt-12 pt-8 border-t border-gray-800">
+          <div className="text-center text-gray-400 text-sm">
+            © Powered BY OPPZ AI
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+export default Footer;

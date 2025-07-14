@@ -35,7 +35,7 @@ interface JobStats {
   thisMonth: number;
 }
 
-const extensionId = 'edejolphacgbhddjeoomiadkgfaocjcj';
+const extensionId = 'hmjkmddeonifkflejbicnapamlfejdim';
 
 const JobApplicationHistory: React.FC = () => {
   const [allJobs, setAllJobs] = useState<Job[]>([]);

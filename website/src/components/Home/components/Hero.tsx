@@ -1,146 +1,143 @@
 import React from 'react';
+import { ArrowRight, Play } from 'lucide-react';
+import OPPZAIProcess from './Steps'
+import Footer from '../../Footer/Footer';
+const Home: React.FC = () => {
+  return (
+    <div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500">
+     
 
-export const Home = () => (
-  <div className="bg-gray-50">
-    {/* Hero Section */}
-    <header className="py-32 bg-gradient-to-br from-gray-100 to-gray-200 text-center">
-      <div className="max-w-3xl mx-auto px-4">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-          Automate Your LinkedIn Job Applications
-        </h1>
-        <p className="text-lg md:text-xl text-gray-600 mb-8">
-          Save time and increase your chances of landing your dream job with our powerful automation tool.
-        </p>
-        <div className="flex flex-col md:flex-row justify-center items-center gap-4">
-          <button className="px-6 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition">
-            Get Started
-          </button>
-          <button className="px-6 py-3 border border-blue-600 text-blue-600 font-semibold rounded hover:bg-blue-600 hover:text-white transition">
-            Learn More
-          </button>
-        </div>
-      </div>
-    </header>
+      {/* Main Content */}
+      <main className="flex items-center justify-between px-6 py-16 max-w-7xl mx-auto">
+        {/* Left Column */}
+        <div className="flex-1 max-w-2xl">
+          <h1 className="text-white text-5xl md:text-6xl font-bold leading-tight mb-6">
+            Revolutionize Your Hiring with AI
+          </h1>
+          
+          <p className="text-blue-100 text-xl mb-8 leading-relaxed">
+            Smarter, Faster, More Secure Recruitment Powered by AI and Web3
+          </p>
+          
+          <div className="flex items-center space-x-4 mb-12">
+            <button className="bg-white text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors flex items-center space-x-2 font-semibold">
+              <ArrowRight className="w-5 h-5" />
+              <span>Get Started Free</span>
+            </button>
+            <button className="border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2">
+              <Play className="w-5 h-5" />
+              <span>Book a Demo</span>
+            </button>
+          </div>
 
-    {/* How It Works Section */}
-    <section className="py-20 bg-white">
-      <div className="max-w-6xl mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-4">How It Works</h2>
-        <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto">
-          Get started with our automated job application process in just 4 simple steps
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Step 1 */}
-          <div className="text-center group">
-            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200 transition overflow-hidden">
-              <img 
-                src="https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=80&h=80&fit=crop&crop=center" 
-                alt="Upload Resume" 
-                className="w-12 h-12 object-cover rounded"
-              />
+          {/* Statistics */}
+          <div className="flex items-center space-x-16">
+            <div>
+              <div className="text-white text-4xl font-bold mb-2">46%</div>
+              <div className="text-blue-100">Increase in Qualified Applicants</div>
             </div>
-            <h3 className="text-xl font-semibold mb-3">Upload Resume</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              Simply drag and drop your resume or upload it from your device. Our AI will automatically extract your skills, experience, and qualifications to create a comprehensive profile.
-            </p>
-          </div>
-          
-          {/* Step 2 */}
-          <div className="text-center group">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-200 transition overflow-hidden">
-              <img 
-                src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=80&h=80&fit=crop&crop=center" 
-                alt="Set Preferences" 
-                className="w-12 h-12 object-cover rounded"
-              />
+            <div>
+              <div className="text-white text-4xl font-bold mb-2">35%</div>
+              <div className="text-blue-100">Reduction in Hiring Time</div>
             </div>
-            <h3 className="text-xl font-semibold mb-3">Set Preferences</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              Customize your job search with specific criteria including desired roles, industries, locations, salary range, and company size. Set remote work preferences and experience level requirements.
-            </p>
-          </div>
-          
-          {/* Step 3 */}
-          <div className="text-center group">
-            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200 transition overflow-hidden">
-              <img 
-                src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=80&h=80&fit=crop&crop=center" 
-                alt="Auto Apply" 
-                className="w-12 h-12 object-cover rounded"
-              />
-            </div>
-            <h3 className="text-xl font-semibold mb-3">Auto Apply</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              Our intelligent system scans LinkedIn for matching opportunities and automatically submits tailored applications. Each application is customized with relevant keywords and cover letters.
-            </p>
-          </div>
-          
-          {/* Step 4 */}
-          <div className="text-center group">
-            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-orange-200 transition overflow-hidden">
-              <img 
-                src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=80&h=80&fit=crop&crop=center" 
-                alt="Track Progress" 
-                className="w-12 h-12 object-cover rounded"
-              />
-            </div>
-            <h3 className="text-xl font-semibold mb-3">Track Progress</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              Monitor all your applications through our comprehensive dashboard. Track response rates, interview invitations, and application status. Get insights to optimize your job search strategy.
-            </p>
           </div>
         </div>
-        
-        {/* Connecting Lines for Desktop */}
-        <div className="hidden lg:block relative mt-8">
-          <div className="absolute top-0 left-1/4 w-1/4 h-0.5 bg-gradient-to-r from-blue-300 to-green-300"></div>
-          <div className="absolute top-0 left-1/2 w-1/4 h-0.5 bg-gradient-to-r from-green-300 to-purple-300"></div>
-          <div className="absolute top-0 left-3/4 w-1/4 h-0.5 bg-gradient-to-r from-purple-300 to-orange-300"></div>
-        </div>
-      </div>
-    </section>
 
-    {/* Features Section */}
-    <section className="py-20 bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-12">Key Features</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          <div className="p-6 bg-white rounded-lg shadow-md hover:-translate-y-2 hover:shadow-lg transition-all duration-300">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-              <img 
-                src="https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=48&h=48&fit=crop&crop=center" 
-                alt="Easy Apply" 
-                className="w-8 h-8 object-cover rounded"
-              />
+        {/* Right Column - Image */}
+        <div className="flex-1 max-w-lg ml-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+            <div className="bg-gray-800 rounded-lg p-6 mb-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              </div>
+              <div className="space-y-3">
+                <div className="h-4 bg-gray-600 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-600 rounded w-1/2"></div>
+                <div className="h-4 bg-gray-600 rounded w-5/6"></div>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold text-blue-600 mb-3">Easy Apply Automation</h3>
-            <p className="text-gray-600">Automatically fill out job applications with your saved information and submit them instantly to relevant positions.</p>
-          </div>
-          <div className="p-6 bg-white rounded-lg shadow-md hover:-translate-y-2 hover:shadow-lg transition-all duration-300">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-              <img 
-                src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=48&h=48&fit=crop&crop=center" 
-                alt="Smart Filtering" 
-                className="w-8 h-8 object-cover rounded"
-              />
+            
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold">AI</span>
+                </div>
+                <div className="flex-1">
+                  <div className="h-3 bg-white/20 rounded w-full"></div>
+                  <div className="h-3 bg-white/20 rounded w-2/3 mt-2"></div>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold">HR</span>
+                </div>
+                <div className="flex-1">
+                  <div className="h-3 bg-white/20 rounded w-4/5"></div>
+                  <div className="h-3 bg-white/20 rounded w-1/2 mt-2"></div>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold">JD</span>
+                </div>
+                <div className="flex-1">
+                  <div className="h-3 bg-white/20 rounded w-3/4"></div>
+                  <div className="h-3 bg-white/20 rounded w-5/6 mt-2"></div>
+                </div>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold text-green-600 mb-3">Smart Filtering</h3>
-            <p className="text-gray-600">Set custom filters to find the most relevant jobs for your career path, skills, and preferences with AI-powered matching.</p>
-          </div>
-          <div className="p-6 bg-white rounded-lg shadow-md hover:-translate-y-2 hover:shadow-lg transition-all duration-300">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-              <img 
-                src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=48&h=48&fit=crop&crop=center" 
-                alt="Application Tracking" 
-                className="w-8 h-8 object-cover rounded"
-              />
-            </div>
-            <h3 className="text-xl font-semibold text-purple-600 mb-3">Application Tracking</h3>
-            <p className="text-gray-600">Keep track of all your applications in one centralized dashboard with real-time status updates and analytics.</p>
           </div>
         </div>
+         
+      </main>
+      <div className='text-center py-12'>
+          <p className="text-blue-100 text-xl mb-8 mx-auto leading-relaxed">
+            Smarter, Faster, More Secure Recruitment Powered by AI and Web3
+          </p>
+           <button className="border-2 mx-auto border-white text-white px-8 py-4 rounded-full hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2">
+              <Play className="w-5 h-5" />
+              <span>Try-Free Chrome Extention</span>
+            </button>
       </div>
-    </section>
+
+    </div>
+   <div className="min-h-screen bg-black text-center flex flex-col items-center justify-center px-4">
+  <p className="text-white font-bold text-6xl mb-2 leading-relaxed">
+    Watch Teemo Ai In Action
+  </p>
+  <div className="w-full max-w-4xl aspect-video">
+    <video
+      className="w-full h-full rounded-lg shadow-lg"
+      src="/auto_Applyed.mp4"
+      title="Teemo AI Demo"
+      controls
+      autoPlay
+      loop
+    ></video>
   </div>
-);
+  
+
+</div>
+<OPPZAIProcess />
+ <div className="min-h-screen bg-black text-center flex flex-col items-center justify-center px-4">
+  <p className="text-white font-bold text-6xl mb-2 leading-relaxed">
+    Track every Job You are applying to!
+  </p>
+  <div className="w-full max-w-4xl aspect-video">
+     <img src='/job_track.png' alt="Track Jobs" className="w-full h-full rounded-lg shadow-lg" />
+  </div>
+  
+
+</div>
+    
+    <Footer />
+    </div>
+  );
+};
+
+export default  Home;

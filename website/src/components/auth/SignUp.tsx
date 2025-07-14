@@ -216,7 +216,7 @@ const SignUp: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-100">Email Address</label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-100">Email/Username</label>
                 <input
                   type="email"
                   id="email"
@@ -266,9 +266,9 @@ const SignUp: React.FC = () => {
             />
             <label htmlFor="terms" className="ml-2 block text-sm text-gray-100">
               I agree to the{' '}
-              <a href="/terms" className="text-indigo-200 hover:text-indigo-400">Terms of Service</a>{' '}
-              and{' '}
-              <a href="/privacy" className="text-indigo-200 hover:text-indigo-400">Privacy Policy</a>
+              {/* <a href="/terms" className="text-indigo-200 hover:text-indigo-400">Terms of Service</a>{' '}
+              and{' '} */}
+              <a href="./PrivacyPolicy" className="text-indigo-200 hover:text-indigo-400">Privacy Policy</a>
             </label>
           </div>
 

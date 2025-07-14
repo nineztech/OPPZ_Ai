@@ -2,10 +2,10 @@ import React, { useState, useMemo,useRef,useCallback, useEffect } from 'react';
 import { Check, UserCog, Upload, User, Save } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
- 
 import FilterSettingsConfigs from './FilterSettingsConfig';
 import SkillsManager from './Skills';
 import ExperienceManager from './Experiance';
+ 
  
 
 interface ProfileData {
@@ -63,6 +63,7 @@ const ProfileBuilder: React.FC = () => {
   const [data, setData] = useState<ProfileData>(initialState);
   const [resumeFile, setResumeFile] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
   const [profileExists, setProfileExists] = useState<boolean>(false);
   const [profileId, setProfileId] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
@@ -89,6 +90,7 @@ const ProfileBuilder: React.FC = () => {
     if (typeof value === 'number') return !isNaN(value);
     return Boolean(value);
   };
+ 
 
   // Function to check if profile is complete
   // const isProfileComplete = (): boolean => {
@@ -166,6 +168,7 @@ const ProfileBuilder: React.FC = () => {
           const userEmail = parsedUser?.email;
 
           if (userEmail) {
+             
             console.log("🔍 Loading profile for email:", userEmail);
             
             try {
@@ -389,7 +392,7 @@ const ProfileBuilder: React.FC = () => {
         console.log("🔄 Updating existing profile");
       } else {
         // Create new profile
-        url = `${api_baseUrl}/api/profile/create`;
+        url = `${api_baseUrl}/api/profile`;
         method = 'POST';
         console.log("🆕 Creating new profile");
       }
@@ -461,6 +464,8 @@ const ProfileBuilder: React.FC = () => {
       }
     }
   };
+
+ 
 
   // Function to check if user can access certain features
   const canAccessFeature = (feature: string): boolean => {
@@ -684,7 +689,7 @@ const ProfileBuilder: React.FC = () => {
 
                 {/* Submit Button */}
                 <button
-                  onClick={handleSubmit}
+                  onClick={handleSubmit} 
                   disabled={!profileStatus.requiredFieldsFilled || !profileStatus.resumeUploaded}
                   className={`w-full mt-6 py-3 rounded-lg font-bold transition-all ${
                     profileStatus.requiredFieldsFilled && profileStatus.resumeUploaded
