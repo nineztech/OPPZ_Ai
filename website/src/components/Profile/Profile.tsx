@@ -1,12 +1,10 @@
-import React, { useState, useMemo,useRef,useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Check, UserCog, Upload, User, Save } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import FilterSettingsConfigs from './FilterSettingsConfig';
 import SkillsManager from './Skills';
 import ExperienceManager from './Experiance';
- 
- 
 
 interface ProfileData {
   firstName: string;
@@ -63,11 +61,12 @@ const ProfileBuilder: React.FC = () => {
   const [data, setData] = useState<ProfileData>(initialState);
   const [resumeFile, setResumeFile] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
   const [profileExists, setProfileExists] = useState<boolean>(false);
   const [profileId, setProfileId] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState('Personal Details');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>({
     completed: false,
     timestamp: 0,
@@ -77,8 +76,50 @@ const ProfileBuilder: React.FC = () => {
     submitted: false
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-   
-  const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006";
+
+  // FIXED: More robust API base URL detection for production
+  const getApiBaseUrl = () => {
+    // Priority 1: Environment variable (most reliable for production)
+    const envUrl = process.env.REACT_APP_API_BASE_URL;
+    if (envUrl) {
+      return envUrl.replace(/\/$/, ''); // Remove trailing slash
+    }
+    
+    const currentHost = window.location.hostname;
+    const protocol = window.location.protocol;
+    const port = window.location.port;
+    
+    // Priority 2: Local development
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return "http://localhost:5006";
+    }
+    
+    // Priority 3: Production - more robust detection
+    // Check if we're on HTTPS (production) or HTTP (staging)
+    const isProduction = protocol === 'https:';
+    
+    // Common production patterns
+    const productionPatterns = [
+      `${protocol}//api.${currentHost}`, // api.yourdomain.com
+      `${protocol}//${currentHost}/api`, // yourdomain.com/api
+      `${protocol}//backend.${currentHost}`, // backend.yourdomain.com
+      `${protocol}//${currentHost.replace('www.', 'api.')}`, // Replace www with api
+    ];
+    
+    // For staging/development with specific ports
+    const stagingPatterns = [
+      `${protocol}//${currentHost}:5006`, // Same domain with port
+      `${protocol}//${currentHost}:3001`, // Common backend port
+      `${protocol}//${currentHost}${port ? `:${port}` : ''}/api`, // Current port with /api
+    ];
+    
+    const patterns = isProduction ? productionPatterns : [...productionPatterns, ...stagingPatterns];
+    
+    // Return the first pattern - you might want to make this configurable
+    return patterns[0];
+  };
+
+  const api_baseUrl = getApiBaseUrl();
 
   // Required fields for profile completion
   const requiredFields = useMemo(() => ['firstName', 'lastName', 'email', 'experience', 'city', 'phone', 'currentSalary', 'expectedSalary'], []);
@@ -90,158 +131,271 @@ const ProfileBuilder: React.FC = () => {
     if (typeof value === 'number') return !isNaN(value);
     return Boolean(value);
   };
- 
-
-  // Function to check if profile is complete
-  // const isProfileComplete = (): boolean => {
-  //   // Check if all required fields are filled
-  //   const allRequiredFieldsFilled = requiredFields.every(field => {
-  //     const value = data[field as keyof ProfileData];
-  //     return isFieldFilled(value);
-  //   });
-    
-  //   // Check if resume is uploaded
-  //   const resumeUploaded = !!(resumeFile && (selectedFile || profileExists));
-    
-  //   // Profile is complete if all required fields are filled, resume is uploaded, and profile is submitted
-  //   return allRequiredFieldsFilled && resumeUploaded && isSubmitted;
-  // };
 
   // Function to update profile status
- const updateProfileStatus = useCallback((): ProfileStatus => {
-  const requiredFieldsStatus = requiredFields.every(field => {
-    const value = data[field as keyof ProfileData];
-    return isFieldFilled(value);
-  });
+  const updateProfileStatus = useCallback((): ProfileStatus => {
+    const requiredFieldsStatus = requiredFields.every(field => {
+      const value = data[field as keyof ProfileData];
+      return isFieldFilled(value);
+    });
 
-  const resumeStatus = !!(resumeFile && (selectedFile || profileExists));
-  const complete = requiredFieldsStatus && resumeStatus && isSubmitted;
+    const resumeStatus = !!(resumeFile && (selectedFile || profileExists));
+    const complete = requiredFieldsStatus && resumeStatus && isSubmitted;
 
-  const statusData: ProfileStatus = {
-    completed: complete,
-    timestamp: Date.now(),
-    lastUpdated: new Date().toISOString(),
-    requiredFieldsFilled: requiredFieldsStatus,
-    resumeUploaded: resumeStatus,
-    submitted: isSubmitted
+    const statusData: ProfileStatus = {
+      completed: complete,
+      timestamp: Date.now(),
+      lastUpdated: new Date().toISOString(),
+      requiredFieldsFilled: requiredFieldsStatus,
+      resumeUploaded: resumeStatus,
+      submitted: isSubmitted
+    };
+
+    console.log('Updating profile status:', statusData);
+    setProfileStatus(statusData);
+
+    // Safe localStorage usage
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('profileStatus', JSON.stringify(statusData));
+      }
+    } catch (error) {
+      console.warn('localStorage not available:', error);
+    }
+
+    // Dispatch custom event
+    try {
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('profileStatusChanged', {
+          detail: statusData
+        }));
+      }
+    } catch (error) {
+      console.warn('Custom event dispatch failed:', error);
+    }
+
+    return statusData;
+  }, [data, resumeFile, selectedFile, profileExists, isSubmitted, requiredFields]);
+
+  // Enhanced API request function with better error handling and CORS support
+  const makeApiRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const defaultOptions: RequestInit = {
+      credentials: 'include', // Include cookies for CORS
+      headers: {
+        'Accept': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    // Only add Content-Type for JSON requests
+    if (options.body && typeof options.body === 'string') {
+      defaultOptions.headers = {
+        ...defaultOptions.headers,
+        'Content-Type': 'application/json',
+      };
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    try {
+      console.log('Making API request:', {
+        url,
+        method: options.method || 'GET',
+        headers: defaultOptions.headers,
+        hasBody: !!options.body
+      });
+
+      const response = await fetch(url, {
+        ...defaultOptions,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log('API response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        url: response.url
+      });
+      
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error('API request failed:', {
+        url,
+        error: error instanceof Error ? error.message : error,
+        name: error instanceof Error ? error.name : 'Unknown'
+      });
+      throw error;
+    }
   };
 
-  console.log('Updating profile status:', statusData);
-
-  setProfileStatus(statusData);
-
-  try {
-    if (typeof Storage !== 'undefined') {
-      localStorage.setItem('profileStatus', JSON.stringify(statusData));
-    }
-  } catch (error) {
-    console.warn('localStorage not available:', error);
-  }
-
-  if (typeof window !== 'undefined' && window.dispatchEvent) {
-    window.dispatchEvent(new CustomEvent('profileStatusChanged', {
-      detail: statusData
-    }));
-  }
-
-  return statusData;
-}, [data, resumeFile, selectedFile, profileExists, isSubmitted, requiredFields]); // ✅ added requiredFields
-
-
-
-  // Load existing profile data and status
-  useEffect(() => {
-    const loadProfile = async () => {
+  // Enhanced profile loading with better error handling and debugging
+  const loadProfile = useCallback(async () => {
+    console.log('🔄 Starting profile load process...');
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Load from localStorage if available
       try {
-        // Load from localStorage if available
-        if (typeof Storage !== 'undefined') {
+        if (typeof window !== 'undefined' && window.localStorage) {
           const storedStatus = localStorage.getItem('profileStatus');
           if (storedStatus) {
             const parsedStatus = JSON.parse(storedStatus);
             setProfileStatus(parsedStatus);
+            console.log('📦 Loaded status from localStorage:', parsedStatus);
           }
         }
+      } catch (storageError) {
+        console.warn('⚠️ Error loading from localStorage:', storageError);
+      }
 
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          const userEmail = parsedUser?.email;
-
-          if (userEmail) {
-             
-            console.log("🔍 Loading profile for email:", userEmail);
-            
-            try {
-              // Use the email-specific endpoint
-             const response = await fetch(`${api_baseUrl}/api/profile/email/${encodeURIComponent(userEmail)}`);
-;
-
-              console.log("📡 Profile fetch response status:", response.status);
-              
-              if (response.ok) {
-                const result = await response.json();
-                console.log("✅ Profile fetch result:", result);
-                
-                if (result.success && result.profile) {
-                  const profile: ExistingProfile = result.profile;
-                  const { id, resume, resumeUrl, createdAt, updatedAt, ...profileData } = profile;
-                  
-                  setData(profileData);
-                  setResumeFile(resume);
-                  setProfileExists(true);
-                  setProfileId(id);
-                  setIsSubmitted(true);
-                  
-                  console.log("✅ Profile loaded successfully:", {
-                    id,
-                    email: profileData.email,
-                    resumeFile: resume
-                  });
-                } else {
-                  console.log("❌ Profile not found in response");
-                  setProfileExists(false);
-                  setProfileId(null);
-                  setIsSubmitted(false);
-                }
-              } else if (response.status === 404) {
-                console.log("ℹ️ Profile not found (404) - user needs to create profile");
-                setProfileExists(false);
-                setProfileId(null);
-                setIsSubmitted(false);
-              } else {
-                console.error("❌ Profile fetch failed:", response.statusText);
-                setProfileExists(false);
-                setProfileId(null);
-                setIsSubmitted(false);
-              }
-            } catch (fetchError) {
-              console.error("❌ Network error fetching profile:", fetchError);
-              setProfileExists(false);
-              setProfileId(null);
-              setIsSubmitted(false);
-            }
+      // Get user email from localStorage
+      let userEmail: string | null = null;
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            userEmail = parsedUser?.email;
+            console.log('👤 Found user email:', userEmail);
           }
         }
-      } catch (error) {
-        console.error('Error loading profile:', error);
+      } catch (userError) {
+        console.warn('⚠️ Error loading user from localStorage:', userError);
+      }
+
+      if (!userEmail) {
+        console.log("❌ No user email found in localStorage");
+        setProfileExists(false);
+        setProfileId(null);
+        setIsSubmitted(false);
+        return;
+      }
+
+      console.log("🔍 Loading profile for email:", userEmail);
+      console.log("🌐 API Base URL:", api_baseUrl);
+
+      const encodedEmail = encodeURIComponent(userEmail);
+      const profileUrl = `${api_baseUrl}/api/profile/email/${encodedEmail}`;
+      
+      console.log("📡 Making request to:", profileUrl);
+
+      const response = await makeApiRequest(profileUrl, {
+        method: 'GET',
+      });
+
+      console.log("📡 Profile fetch response:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url
+      });
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('❌ Response is not JSON:', contentType);
+          throw new Error('Server returned non-JSON response');
+        }
+
+        const result = await response.json();
+        console.log("✅ Profile fetch result:", result);
+        
+        if (result.success && result.profile) {
+          const profile: ExistingProfile = result.profile;
+          const { id, resume, resumeUrl, createdAt, updatedAt, ...profileData } = profile;
+          
+          setData(profileData);
+          setResumeFile(resume);
+          setProfileExists(true);
+          setProfileId(id);
+          setIsSubmitted(true);
+          
+          console.log("✅ Profile loaded successfully:", {
+            id,
+            email: profileData.email,
+            resumeFile: resume,
+            hasData: Object.keys(profileData).length > 0
+          });
+        } else {
+          console.log("❌ Profile not found in response:", result);
+          setProfileExists(false);
+          setProfileId(null);
+          setIsSubmitted(false);
+        }
+      } else if (response.status === 404) {
+        console.log("ℹ️ Profile not found (404) - user needs to create profile");
+        setProfileExists(false);
+        setProfileId(null);
+        setIsSubmitted(false);
+      } else {
+        // Try to get error details
+        let errorText = '';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorText = errorData.message || JSON.stringify(errorData);
+          } else {
+            errorText = await response.text();
+          }
+        } catch (e) {
+          errorText = response.statusText || 'Unknown error';
+        }
+        
+        console.error("❌ Profile fetch failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+          url: response.url
+        });
+        
+        setError(`Failed to load profile: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
         setProfileExists(false);
         setProfileId(null);
         setIsSubmitted(false);
       }
-    };
-
-    loadProfile();
+    } catch (fetchError) {
+      console.error("❌ Network error fetching profile:", fetchError);
+      
+      let errorMessage = 'Network error occurred while loading profile';
+      if (fetchError instanceof Error) {
+        if (fetchError.name === 'AbortError') {
+          errorMessage = 'Request timed out - please check your connection';
+        } else if (fetchError.message.includes('Failed to fetch')) {
+          errorMessage = 'Unable to connect to server - please check if the API is running';
+        } else {
+          errorMessage = `Network error: ${fetchError.message}`;
+        }
+      }
+      
+      setError(errorMessage);
+      setProfileExists(false);
+      setProfileId(null);
+      setIsSubmitted(false);
+    } finally {
+      setLoading(false);
+    }
   }, [api_baseUrl]);
 
+  // Load existing profile data and status
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
   // Update status whenever relevant data changes
- useEffect(() => {
-  const timeoutId = setTimeout(() => {
-    updateProfileStatus();
-  }, 300); // Debounce to avoid too many updates
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      updateProfileStatus();
+    }, 300); // Debounce to avoid too many updates
 
-  return () => clearTimeout(timeoutId);
-}, [data, resumeFile, selectedFile, profileExists, isSubmitted, updateProfileStatus]);
-
+    return () => clearTimeout(timeoutId);
+  }, [data, resumeFile, selectedFile, profileExists, isSubmitted, updateProfileStatus]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -325,6 +479,10 @@ const ProfileBuilder: React.FC = () => {
     console.log("🚀 === DEBUGGING FRONTEND SUBMISSION ===");
     console.log("🔍 Profile exists:", profileExists);
     console.log("🔍 Profile ID:", profileId);
+    console.log("🌐 API Base URL:", api_baseUrl);
+    
+    setLoading(true);
+    setError(null);
     
     // Check if all required fields are filled
     const allRequiredFieldsFilled = requiredFields.every(field => {
@@ -337,12 +495,14 @@ const ProfileBuilder: React.FC = () => {
     console.log("📎 Selected file object:", selectedFile);
 
     if (!allRequiredFieldsFilled) {
-      alert('⚠️ Please fill all required fields before submitting.');
+      setError('Please fill all required fields before submitting.');
+      setLoading(false);
       return;
     }
 
     if (!resumeFile || (!selectedFile && !profileExists)) {
-      alert('⚠️ Please upload your resume before submitting.');
+      setError('Please upload your resume before submitting.');
+      setLoading(false);
       return;
     }
 
@@ -358,13 +518,15 @@ const ProfileBuilder: React.FC = () => {
       // Validate file type
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(selectedFile.type)) {
-        alert('⚠️ Please select a PDF, DOC, or DOCX file.');
+        setError('Please select a PDF, DOC, or DOCX file.');
+        setLoading(false);
         return;
       }
 
       // Validate file size (5MB max)
       if (selectedFile.size > 5 * 1024 * 1024) {
-        alert('⚠️ File size must be less than 5MB.');
+        setError('File size must be less than 5MB.');
+        setLoading(false);
         return;
       }
     }
@@ -402,7 +564,7 @@ const ProfileBuilder: React.FC = () => {
       console.log("🌐 Making API request to:", url);
       console.log("🌐 Method:", method);
       
-      const response = await fetch(url, {
+      const response = await makeApiRequest(url, {
         method: method,
         body: formData,
       });
@@ -410,6 +572,12 @@ const ProfileBuilder: React.FC = () => {
       console.log("📡 Response status:", response.status);
 
       if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('❌ Submit response is not JSON:', contentType);
+          throw new Error('Server returned non-JSON response');
+        }
+
         const result = await response.json();
         console.log("✅ Success response:", result);
         
@@ -432,6 +600,7 @@ const ProfileBuilder: React.FC = () => {
           
           // Show success message
           const action = profileExists ? 'updated' : 'created';
+          setError(null);
           alert(`✅ Profile ${action} successfully!`);
           
           // Force status update immediately
@@ -440,34 +609,58 @@ const ProfileBuilder: React.FC = () => {
           }, 100);
         } else {
           console.error("❌ Invalid response format:", result);
-          alert('🚫 Error: Invalid response from server');
+          setError('Invalid response from server');
         }
       } else {
-        const errorText = await response.text();
-        console.error("❌ Error response:", errorText);
+        let errorText = '';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorText = errorData.message || JSON.stringify(errorData);
+          } else {
+            errorText = await response.text();
+          }
+        } catch (e) {
+          errorText = response.statusText || 'Unknown error';
+        }
+        
+        console.error("❌ Error response:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
         
         // Handle specific error cases
         if (response.status === 409) {
-          alert('🚫 Profile already exists. Please try updating instead.');
+          setError('Profile already exists. Please try updating instead.');
         } else if (response.status === 404) {
-          alert('🚫 Profile not found. Please try creating a new profile.');
+          setError('Profile not found. Please try creating a new profile.');
         } else if (response.status === 400) {
-          alert(`🚫 Validation Error: ${errorText}`);
+          setError(`Validation Error: ${errorText}`);
+        } else if (response.status === 500) {
+          setError('Server error occurred. Please try again later.');
         } else {
-          alert(`🚫 Error: ${response.statusText}\nDetails: ${errorText}`);
+          setError(`Error: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
         }
       }
     } catch (error) {
       console.error("❌ Network error:", error);
       if (error instanceof Error) {
-        alert(`Network error: ${error.message}`);
+        if (error.name === 'AbortError') {
+          setError('Request timed out. Please try again.');
+        } else if (error.message.includes('Failed to fetch')) {
+          setError('Unable to connect to server. Please check if the API is running.');
+        } else {
+          setError(`Network error: ${error.message}`);
+        }
       } else {
-        alert('Network error occurred. Please try again.');
+        setError('Network error occurred. Please try again.');
       }
+    } finally {
+      setLoading(false);
     }
   };
-
- 
 
   // Function to check if user can access certain features
   const canAccessFeature = (feature: string): boolean => {
@@ -508,6 +701,19 @@ const ProfileBuilder: React.FC = () => {
     return 0;
   };
 
+  // Show loading state
+  if (loading && !data.email) {
+    return (
+      <div className="min-h-screen rounded-xl p-4 ml-6 -mt-2 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+          <p className="text-sm text-gray-500 mt-2">API URL: {api_baseUrl}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen rounded-xl p-4 ml-6 -mt-2 flex">
       <div className="flex-1 p-8 overflow-y-auto">
@@ -519,6 +725,32 @@ const ProfileBuilder: React.FC = () => {
               </h1>
               <p className="text-sm justify-center items-center ml-8">Customize and optimize your job application preferences to match your dream role.</p>
             </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="mx-8 mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <div className="flex items-center">
+                  <span className="font-medium">Error:</span>
+                  <span className="ml-2">{error}</span>
+                  <button
+                    onClick={() => setError(null)}
+                    className="ml-auto text-red-500 hover:text-red-700"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Loading Indicator */}
+            {loading && (
+              <div className="mx-8 mt-4 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded-lg">
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+                  <span>Processing...</span>
+                </div>
+              </div>
+            )}
 
             {/* Tabs */}
             <div className="mb-6 border-b border-gray-200 m-8">
@@ -570,6 +802,7 @@ const ProfileBuilder: React.FC = () => {
                   {profileStatus.lastUpdated && (
                     <div>Last updated: {new Date(profileStatus.lastUpdated).toLocaleString()}</div>
                   )}
+                   
                 </div>
               </div>
             </div>
@@ -620,6 +853,7 @@ const ProfileBuilder: React.FC = () => {
                         value={data[field as keyof ProfileData]}
                         onChange={handleChange}
                         className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black"
+                        disabled={loading}
                       />
                     </div>
                   ))}
@@ -630,7 +864,15 @@ const ProfileBuilder: React.FC = () => {
                       country={'us'}
                       value={data.phone}
                       onChange={(phone) => setData(prev => ({ ...prev, phone }))}
-                      inputStyle={{ width: '100%', height: '48px', borderRadius: '8px', border: '1px solid #00000055', paddingLeft: '48px' }}
+                      disabled={loading}
+                      inputStyle={{ 
+                        width: '100%', 
+                        height: '48px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #00000055', 
+                        paddingLeft: '48px',
+                        opacity: loading ? 0.5 : 1
+                      }}
                       containerStyle={{ width: '100%' }}
                     />
                   </div>
@@ -652,7 +894,7 @@ const ProfileBuilder: React.FC = () => {
                       />
                     </div>
                   ))}
-                  <div className="w-20 h-12 rounded-xl bg-gray-200 flex flex-col items-center justify-center shadow text-orange-600 font-semibold text-xs text-center mt-[30px]">
+                  <div className="w-24 h-14 rounded-xl bg-gray-200 flex flex-col items-center justify-center shadow text-orange-600 font-semibold text-xs text-center mt-[34px]">
                     <span className="text-xs flex-row text-orange-800 font-medium">Growth EX.</span>
                     <span className="text-xl font-bold">
                       {calculateGrowthExpectation(data.currentSalary, data.expectedSalary)}%

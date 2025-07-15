@@ -16,7 +16,7 @@ import Layout from './Layout';
 import ProtectedRoute from './ProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner/LoadingSpinner';
 import RefundPolicy from './components/auth/RefundPolicy';
- 
+import FAQ from './components/Home/components/FAQ';
 const AppRoutes = () => {
   const { isLoading } = useAuth();
   if (isLoading) return <LoadingSpinner />;
@@ -34,7 +34,7 @@ const AppRoutes = () => {
       {/* Public Routes */}
       <Route path="/features" element={<Layout><Feature /></Layout>} />
       <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
-
+      <Route path="/FAQ" element={<Layout><FAQ /></Layout>} />
       {/* Protected Routes */}
       <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
       <Route path="/UserProfile" element={<ProtectedRoute><Layout><UserProfile /></Layout></ProtectedRoute>} />
