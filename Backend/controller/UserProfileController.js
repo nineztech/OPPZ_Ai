@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { Op, fn, col } from 'sequelize'; // ✅ ensure you import these
+import { fn, col, where } from 'sequelize';// ✅ ensure you import these
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -360,17 +360,15 @@ export const getProfileById = async (req, res) => {
   }
 };
 
-// Get profile by email
 export const getProfileByEmail = async (req, res) => {
   try {
     const rawEmail = req.params.email;
-    const email = rawEmail.toLowerCase(); // normalize incoming email
+    const email = rawEmail.toLowerCase();
 
     console.log(`📋 Fetching profile with email (case-insensitive): ${email}`);
 
     const profile = await Profile.findOne({
-      where: fn('LOWER', col('email')), // column
-      [Op.eq]: email                    // value
+      where: where(fn('LOWER', col('email')), email)
     });
 
     if (!profile) {
