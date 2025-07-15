@@ -1,4 +1,4 @@
-// Enhanced Chrome Extension Form Manager with improvements
+// Enhanced FormManager with better auto-apply integration
 
 class FormManager {
     constructor() {
@@ -11,27 +11,25 @@ class FormManager {
             Email: ''
         };
         
-       this.fieldMapping = {
-  'First Name': 'FirstName',
-  'Last Name': 'LastName',
-  'Phone Number': 'PhoneNumber',
-  'Mobile Phone Number': 'PhoneNumber',
-  'Email': 'Email',
-  'City': 'City',
-  'Years of Experience': 'YearsOfExperience',
-  'Experience': 'YearsOfExperience',
-};
-
+        this.fieldMapping = {
+            'First Name': 'FirstName',
+            'Last Name': 'LastName',
+            'Phone Number': 'PhoneNumber',
+            'Mobile Phone Number': 'PhoneNumber',
+            'Email': 'Email',
+            'City': 'City',
+            'Years of Experience': 'YearsOfExperience',
+            'Experience': 'YearsOfExperience',
+        };
         
-       this.reverseFieldMapping = {
-  'FirstName': 'First Name',
-  'LastName': 'Last Name',
-  'PhoneNumber': 'Phone Number',
-  'Email': 'Email',
-  'City': 'City',
-  'YearsOfExperience': 'Years of Experience',
-};
-
+        this.reverseFieldMapping = {
+            'FirstName': 'First Name',
+            'LastName': 'Last Name',
+            'PhoneNumber': 'Phone Number',
+            'Email': 'Email',
+            'City': 'City',
+            'YearsOfExperience': 'Years of Experience',
+        };
         
         this.init();
     }
@@ -41,407 +39,136 @@ class FormManager {
             this.setupInitialLoad();
             this.setupStorageListeners();
             this.setupObserver();
+            this.addAutoApplyReadinessIndicator();
+            this.setupMessageListeners();
         });
-    }
-    
-    setupInitialLoad() {
-        this.fetchInputFieldConfigs(this.displayAndUpdateInputFieldConfig.bind(this));
-        this.fetchRadioButtonConfigs(this.displayRadioButtonConfigs.bind(this));
-        this.fetchDropdownConfigs(this.displayDropdownConfigs.bind(this));
-        this.loadDefaultFields();
-        this.addSyncButton();
-        this.startAutoSync();
-    }
-    
-    setupStorageListeners() {
-        chrome.storage.onChanged.addListener(changes => {
-            if ('inputFieldConfigs' in changes) {
-                const newConfigurations = changes.inputFieldConfigs.newValue || [];
-                this.displayAndUpdateInputFieldConfig(newConfigurations);
-                setTimeout(() => this.syncWebsiteDataWithForm(), 500);
-            }
-            if ('radioButtons' in changes) {
-                const newConfigurations = changes.radioButtons.newValue || [];
-                this.displayRadioButtonConfigs(newConfigurations);
-            }
-            if ('dropdowns' in changes) {
-                const newConfigurations = changes.dropdowns.newValue || [];
-                this.displayDropdownConfigs(newConfigurations);
-            }
-            if ('defaultFields' in changes) {
-                const newDefaultFields = changes.defaultFields.newValue || {};
-                this.renderInputFields(newDefaultFields);
-                this.updateStatusMessage();
-            }
-        });
-    }
-    
-    setupObserver() {
-        const defaultInputSection = document.getElementById('default-input-fields');
-        if (defaultInputSection) {
-            const observer = new MutationObserver((mutationsList) => {
-                for (const mutation of mutationsList) {
-                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                        this.setupInputFieldEventListeners();
-                    }
-                }
-            });
-            
-            observer.observe(defaultInputSection, { childList: true, subtree: true });
-            
-            window.addEventListener('beforeunload', () => {
-                observer.disconnect();
-            });
-        }
-    }
-    
-    // Utility Functions
-    sortData(data) {
-        return data.sort((a, b) => {
-            const countA = a.count === undefined ? -Infinity : a.count;
-            const countB = b.count === undefined ? -Infinity : b.count;
-            return countB - countA;
-        }).sort((a, b) => {
-            const timeA = a.createdAt === undefined ? -Infinity : a.createdAt;
-            const timeB = b.createdAt === undefined ? -Infinity : b.createdAt;
-            return timeB - timeA;
-        });
-    }
-    
-    isNumeric(str) {
-        return /^\d+$/.test(str);
-    }
-    
-    // Storage Functions
-    async fetchInputFieldConfigs(callback) {
-        try {
-            const result = await new Promise(resolve => {
-                chrome.runtime.sendMessage({ action: 'getInputFieldConfig' }, resolve);
-            });
-            callback(result || []);
-        } catch (error) {
-            console.error('Error fetching input field configs:', error);
-            callback([]);
-        }
-    }
-    
-    async fetchRadioButtonConfigs(callback) {
-        try {
-            const result = await new Promise(resolve => {
-                chrome.storage.local.get('radioButtons', resolve);
-            });
-            callback(result?.radioButtons || []);
-        } catch (error) {
-            console.error('Error fetching radio button configs:', error);
-            callback([]);
-        }
-    }
-    
-    async fetchDropdownConfigs(callback) {
-        try {
-            const result = await new Promise(resolve => {
-                chrome.storage.local.get('dropdowns', resolve);
-            });
-            callback(result.dropdowns || []);
-        } catch (error) {
-            console.error('Error fetching dropdown configs:', error);
-            callback([]);
-        }
-    }
-    
-    // Display Functions
-    displayRadioButtonConfigs(radioButtons) {
-        const configurationsDiv = document.getElementById('radio');
-        if (!configurationsDiv) return;
-        
-        configurationsDiv.innerHTML = '';
-        const sortedRadioButtons = this.sortData(radioButtons);
-        
-        sortedRadioButtons.forEach(config => {
-            const configContainer = this.createRadioButtonConfig(config);
-            configurationsDiv.appendChild(configContainer);
-        });
-    }
-    
-    createRadioButtonConfig(config) {
-        const configContainer = document.createElement('div');
-        configContainer.className = 'config-container';
-        configContainer.id = `radio-config-${config.placeholderIncludes}-container`;
-        
-        const questionTitle = document.createElement('h3');
-        questionTitle.textContent = config.placeholderIncludes;
-        configContainer.appendChild(questionTitle);
-        
-        const configDetails = document.createElement('div');
-        configDetails.className = 'config-details';
-        configDetails.innerHTML = `
-            <div class="selected-option">
-                <h3><strong>Counter:</strong> ${config.count}</h3>
-            </div>
-        `;
-        configContainer.appendChild(configDetails);
-        
-        config.options.forEach(option => {
-            const radioContainer = document.createElement('div');
-            radioContainer.className = 'radio-container';
-            
-            const radioButton = document.createElement('input');
-            radioButton.type = 'radio';
-            radioButton.name = `config-${config.placeholderIncludes}-radio`;
-            radioButton.value = option.value;
-            radioButton.checked = option.selected;
-            
-            const label = document.createElement('label');
-            label.textContent = this.isNumeric(option.value) ? option?.text : option.value;
-            
-            radioContainer.appendChild(radioButton);
-            radioContainer.appendChild(label);
-            configContainer.appendChild(radioContainer);
-        });
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'delete-button';
-        deleteButton.textContent = 'Delete';
-        deleteButton.addEventListener('click', () => this.deleteRadioButtonConfig(config.placeholderIncludes));
-        configContainer.appendChild(deleteButton);
-        
-        this.addUpdateRadioButtonGroupEventListener(config.placeholderIncludes);
-        
-        return configContainer;
-    }
-    
-    displayDropdownConfigs(dropdowns) {
-        const configurationsDiv = document.getElementById('dropdown');
-        if (!configurationsDiv) return;
-        
-        configurationsDiv.innerHTML = '';
-        const sortedDropdowns = this.sortData(dropdowns);
-        
-        sortedDropdowns.forEach(config => {
-            const configContainer = this.createDropdownConfig(config);
-            configurationsDiv.appendChild(configContainer);
-        });
-    }
-    
-    createDropdownConfig(config) {
-        const configContainer = document.createElement('div');
-        configContainer.className = 'config-container';
-        configContainer.id = `dropdown-config-${config.placeholderIncludes}-container`;
-        
-        const questionTitle = document.createElement('h3');
-        questionTitle.textContent = config.placeholderIncludes;
-        configContainer.appendChild(questionTitle);
-        
-        const configDetails = document.createElement('div');
-        configDetails.className = 'config-details';
-        configDetails.innerHTML = `
-            <div class="dropdown-details">
-                <h3><strong>Counter:</strong> ${config.count}</h3>
-            </div>
-        `;
-        
-        const selectContainer = document.createElement('div');
-        selectContainer.className = 'select-container';
-        const select = document.createElement('select');
-        
-        config.options.forEach(option => {
-            const optionElement = document.createElement('option');
-            optionElement.value = option.value;
-            optionElement.textContent = option.value;
-            if (option.selected) {
-                optionElement.selected = true;
-            }
-            select.appendChild(optionElement);
-        });
-        
-        selectContainer.appendChild(select);
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'delete-button';
-        deleteButton.textContent = 'Delete';
-        deleteButton.addEventListener('click', () => this.deleteDropdownConfig(config.placeholderIncludes));
-        
-        configDetails.appendChild(selectContainer);
-        configContainer.appendChild(configDetails);
-        configContainer.appendChild(deleteButton);
-        
-        this.addUpdateDropDownGroupEventListener(config.placeholderIncludes);
-        
-        return configContainer;
     }
     
     displayAndUpdateInputFieldConfig(configurations) {
-        const configurationsDiv = document.getElementById('configurations');
-        if (!configurationsDiv) return;
-        
-        configurationsDiv.innerHTML = '';
-        
-        if (configurations && configurations.length > 0) {
-            const sortedConfigurations = this.sortData(configurations);
-            sortedConfigurations.forEach(config => {
-                const configContainer = this.createInputFieldConfig(config);
-                configurationsDiv.appendChild(configContainer);
-            });
-        }
-    }
-    
-    createInputFieldConfig(config) {
+    const configurationsDiv = document.getElementById('configurations');
+    if (!configurationsDiv) return;
+
+    configurationsDiv.innerHTML = '';
+
+    if (configurations && configurations.length > 0) {
+      const sortedConfigurations = configurations.sort((a, b) => {
+        const countA = a.count || 0;
+        const countB = b.count || 0;
+        return countB - countA;
+      });
+
+      sortedConfigurations.forEach(config => {
         const configContainer = document.createElement('div');
-        configContainer.id = `config-${config.placeholderIncludes}-container`;
         configContainer.className = 'config-container';
-        
+        configContainer.id = `config-${config.placeholderIncludes}-container`;
+
         configContainer.innerHTML = `
-            <div class="config-container">
-                <h3>${config.placeholderIncludes}</h3>
-                <div class="config-details">
-                    <h3><strong>Current Value:</strong> ${config.defaultValue}</h3>
-                    <h3><strong>Counter:</strong> ${config.count}</h3>
-                </div>
-            </div>
+          <h3>${config.placeholderIncludes}</h3>
+          <div class="config-details">
+            <strong>Current Value:</strong> ${config.defaultValue || '—'}<br>
+            <strong>Count:</strong> ${config.count || 0}
+          </div>
         `;
-        
+
         const inputField = document.createElement('input');
         inputField.type = 'text';
-        inputField.id = `config-${config.placeholderIncludes}`;
-        inputField.placeholder = 'New Default Value';
+        inputField.value = config.defaultValue || '';
         inputField.className = 'config-input';
-        inputField.value = config.defaultValue;
-        
-        const buttonsWrapper = document.createElement('div');
-        buttonsWrapper.className = 'buttons-wrapper';
-        
+
         const updateButton = document.createElement('button');
-        updateButton.className = 'update-button';
         updateButton.textContent = 'Update';
-        updateButton.addEventListener('click', () => this.updateConfigFormControl(config.placeholderIncludes));
-        
+        updateButton.className = 'update-button';
+        updateButton.addEventListener('click', () => {
+          chrome.runtime.sendMessage({
+            action: 'updateInputFieldValue',
+            data: {
+              placeholder: config.placeholderIncludes,
+              value: inputField.value.trim()
+            }
+          }, () => {
+            alert('Updated!');
+          });
+        });
+
         const deleteButton = document.createElement('button');
-        deleteButton.className = 'delete-button';
         deleteButton.textContent = 'Delete';
-        deleteButton.addEventListener('click', () => this.deleteConfig(config.placeholderIncludes));
-        
-        buttonsWrapper.appendChild(updateButton);
-        buttonsWrapper.appendChild(deleteButton);
-        
+        deleteButton.className = 'delete-button';
+        deleteButton.addEventListener('click', () => {
+          chrome.runtime.sendMessage({
+            action: 'deleteInputFieldConfig',
+            data: config.placeholderIncludes
+          }, () => {
+            configContainer.remove();
+          });
+        });
+
         configContainer.appendChild(inputField);
-        configContainer.appendChild(buttonsWrapper);
-        
-        return configContainer;
+        configContainer.appendChild(updateButton);
+        configContainer.appendChild(deleteButton);
+
+        configurationsDiv.appendChild(configContainer);
+      });
     }
-    
-    // Event Listeners
-    addUpdateRadioButtonGroupEventListener(placeholder) {
-        const configurationsDiv = document.getElementById('radio');
-        if (!configurationsDiv) return;
-        
-        configurationsDiv.addEventListener('change', (event) => {
-            if (event.target.matches(`[name="config-${placeholder}-radio"]`)) {
-                chrome.runtime.sendMessage({
-                    action: 'updateRadioButtonValueByPlaceholder',
-                    placeholderIncludes: placeholder,
-                    newValue: event.target.value
+  }
+
+    // Setup message listeners for communication with popup
+    setupMessageListeners() {
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            if (request.action === 'checkFormControlReadiness') {
+                this.checkFormControlReadiness().then(result => {
+                    sendResponse(result);
                 });
+                return true; // Keep message channel open for async response
             }
-        });
-    }
-    
-    async addUpdateDropDownGroupEventListener(placeholderIncludes) {
-        const select = document.getElementById(`dropdown-config-${placeholderIncludes}-container`)?.querySelector('select');
-        if (!select) return;
-        
-        select.addEventListener('change', async () => {
-            const newValue = select.value;
             
-            if (newValue !== '') {
-                try {
-                    const { dropdowns } = await new Promise(resolve => {
-                        chrome.storage.local.get('dropdowns', resolve);
+            if (request.action === 'getFormControlData') {
+                chrome.storage.local.get(['defaultFields', 'inputFieldConfigs'], (result) => {
+                    sendResponse({
+                        defaultFields: result.defaultFields || {},
+                        inputFieldConfigs: result.inputFieldConfigs || []
                     });
-                    
-                    const currentDropdownConfig = dropdowns.find(config => 
-                        config.placeholderIncludes === placeholderIncludes
-                    );
-                    
-                    if (currentDropdownConfig) {
-                        await chrome.runtime.sendMessage({
-                            action: 'updateDropdownConfig',
-                            data: {
-                                placeholderIncludes: placeholderIncludes,
-                                options: currentDropdownConfig.options,
-                                value: newValue,
-                            }
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error updating dropdown:', error);
-                }
+                });
+                return true;
             }
         });
     }
     
-    // Delete Functions
-    async deleteRadioButtonConfig(placeholder) {
-        await chrome.runtime.sendMessage({ action: 'deleteRadioButtonConfig', data: placeholder });
-    }
-    
-    deleteDropdownConfig(placeholderIncludes) {
-        chrome.runtime.sendMessage({ action: 'deleteDropdownConfig', data: placeholderIncludes });
-        const configContainer = document.getElementById(`dropdown-config-${placeholderIncludes}-container`);
-        if (configContainer) {
-            configContainer.remove();
-        }
-    }
-    
-    deleteConfig(placeholder) {
-        chrome.runtime.sendMessage({ action: 'deleteInputFieldConfig', data: placeholder });
-        const configContainer = document.getElementById(`config-${placeholder}-container`);
-        if (configContainer) {
-            configContainer.remove();
-        }
-    }
-    
-    // Update Functions
-    updateConfigFormControl(placeholder) {
-        const inputField = document.getElementById(`config-${placeholder}`);
-        if (!inputField) return;
-        
-        const newValue = inputField.value.trim();
-        chrome.runtime.sendMessage({ 
-            action: 'updateInputFieldValue', 
-            data: { placeholder, value: newValue } 
-        });
-    }
-    
-    async updateConfigDefaultFields(placeholder, newValue) {
+    // Check form control readiness - method that popup can call
+    async checkFormControlReadiness() {
         return new Promise((resolve) => {
-            chrome.runtime.sendMessage({ 
-                action: 'updateInputFieldValue', 
-                data: { placeholder, value: newValue } 
-            }, () => {
-                resolve();
+            chrome.storage.local.get(['defaultFields', 'inputFieldConfigs'], (result) => {
+                const defaultFields = result.defaultFields || {};
+                const inputFieldConfigs = result.inputFieldConfigs || [];
+                const requiredFields = ['YearsOfExperience', 'FirstName', 'LastName', 'PhoneNumber', 'City', 'Email'];
+                
+                const filledFields = requiredFields.filter(field => 
+                    defaultFields[field] && defaultFields[field].trim() !== ''
+                );
+                
+                const missingFields = requiredFields.filter(field => 
+                    !defaultFields[field] || defaultFields[field].trim() === ''
+                );
+                
+                const isReady = missingFields.length === 0;
+                
+                resolve({
+                    ready: isReady,
+                    filledCount: filledFields.length,
+                    totalCount: requiredFields.length,
+                    missingFields: missingFields,
+                    configCount: inputFieldConfigs.length,
+                    defaultFields: defaultFields
+                });
             });
         });
     }
     
-    // Default Fields Management
-    loadDefaultFields() {
-        chrome.storage.local.get(['defaultFields'], (result) => {
-            const defaultFields = result.defaultFields || {};
-            
-            if (Object.keys(defaultFields).length === 0) {
-                chrome.storage.local.set({ 'defaultFields': this.defaultNullFieldInput }, () => {
-                    this.syncWebsiteDataWithForm();
-                });
-            } else {
-                this.syncWebsiteDataWithForm();
-            }
-        });
-    }
-    
+    // Enhanced status message with auto-apply integration
     updateStatusMessage() {
-        chrome.storage.local.get(['defaultFields', 'inputFieldConfigs'], (result) => {
+        chrome.storage.local.get(['defaultFields', 'inputFieldConfigs', 'authToken', 'user'], (result) => {
             const defaultFields = result.defaultFields || {};
             const inputFieldConfigs = result.inputFieldConfigs || [];
+            const isAuthenticated = !!(result.authToken && result.user);
             
             const requiredFields = ['YearsOfExperience', 'FirstName', 'LastName', 'PhoneNumber', 'City', 'Email'];
             let allFieldsFilled = true;
@@ -458,76 +185,351 @@ class FormManager {
             const messageElement = document.getElementById('status-message');
             if (!messageElement) return;
             
+            // Clear existing content
+            messageElement.innerHTML = '';
+            
+            // Authentication check
+            if (!isAuthenticated) {
+                messageElement.innerHTML = `
+                    <div style="color: #b50000; font-weight: bold; margin-bottom: 10px;">
+                        ⚠ Please log in to use auto-apply functionality
+                    </div>
+                `;
+                chrome.storage.local.set({ 'autoApplyReady': false });
+                return;
+            }
+            
             if (allFieldsFilled) {
-                messageElement.textContent = 'You are ready to use auto apply!';
-                messageElement.style.color = '#007700';
-                messageElement.style.fontWeight = 'bold';
+                messageElement.innerHTML = `
+                    <div style="color: #007700; font-weight: bold; margin-bottom: 10px;">
+                        ✅ You are ready to use auto apply!
+                    </div>
+                `;
                 
                 const syncedFields = inputFieldConfigs.filter(config => 
                     config.defaultValue && config.defaultValue.trim() !== ''
                 );
                 
-                this.updateSyncInfo(messageElement, syncedFields.length);
+                this.updateSyncInfo(messageElement, syncedFields.length, filledCount);
                 chrome.storage.local.set({ 'autoApplyReady': true });
+                
+            
+                // Add auto-apply test button
+                this.addAutoApplyTestButton(messageElement);
+                
+                // Notify popup that form is ready
+                chrome.runtime.sendMessage({ 
+                    action: 'formControlReady', 
+                    data: { ready: true, filledCount, totalCount: requiredFields.length }
+                });
+                
             } else {
-                messageElement.textContent = `Please fill out the missing values (${filledCount}/${requiredFields.length} completed):`;
-                messageElement.style.color = '#b50000';
-                messageElement.style.fontWeight = 'normal';
+                const missingFields = requiredFields.filter(fieldName => 
+                    !defaultFields[fieldName] || !defaultFields[fieldName].trim()
+                );
+                
+                messageElement.innerHTML = `
+                    <div style="color: #b50000; margin-bottom: 10px;">
+                        <strong>Please fill out the missing values (${filledCount}/${requiredFields.length} completed):</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            ${missingFields.map(field => `<li>${this.getInputLabelText(field)}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
                 
                 this.removeSyncInfo(messageElement);
                 chrome.storage.local.set({ 'autoApplyReady': false });
+                
+                // Notify popup that form is not ready
+                chrome.runtime.sendMessage({ 
+                    action: 'formControlNotReady', 
+                    data: { ready: false, filledCount, totalCount: requiredFields.length, missingFields }
+                });
+            }
+            
+            // Add progress indicator
+            this.addProgressIndicator(messageElement, filledCount, requiredFields.length);
+        });
+    }
+    
+    // Add auto-apply readiness indicator
+    addAutoApplyReadinessIndicator() {
+        const headerElement = document.querySelector('.default-input-header');
+        if (headerElement) {
+            const indicator = document.createElement('div');
+            indicator.id = 'auto-apply-readiness-indicator';
+            indicator.style.cssText = `
+                background: #f0f0f0;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 15px;
+                margin: 15px 0;
+                text-align: center;
+            `;
+            
+            headerElement.parentNode.insertBefore(indicator, headerElement.nextSibling);
+            this.updateReadinessIndicator();
+        }
+    }
+    
+    // Update readiness indicator
+    updateReadinessIndicator() {
+        const indicator = document.getElementById('auto-apply-readiness-indicator');
+        if (!indicator) return;
+        
+        chrome.storage.local.get(['defaultFields', 'authToken', 'user'], (result) => {
+            const defaultFields = result.defaultFields || {};
+            const isAuthenticated = !!(result.authToken && result.user);
+            const requiredFields = ['YearsOfExperience', 'FirstName', 'LastName', 'PhoneNumber', 'City', 'Email'];
+            
+            const filledCount = requiredFields.filter(field => 
+                defaultFields[field] && defaultFields[field].trim()
+            ).length;
+            
+            const isReady = isAuthenticated && filledCount === requiredFields.length;
+            
+            if (isReady) {
+                indicator.innerHTML = `
+                    <div style="color: #007700;">
+                        <h3 style="margin: 0 0 10px 0;">🎉 Auto-Apply Ready!</h3>
+                        <p style="margin: 0;">You can now use the auto-apply feature on LinkedIn job pages.</p>
+                        <button id="goto-popup-button" style="margin-top: 10px; padding: 8px 16px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Go to Auto-Apply
+                        </button>
+                    </div>
+                `;
+                indicator.style.background = '#e8f5e8';
+                indicator.style.borderColor = '#4caf50';
+                
+                // Add event listener to the button
+                const gotoButton = indicator.querySelector('#goto-popup-button');
+                if (gotoButton) {
+                    gotoButton.addEventListener('click', () => {
+                        // Open popup or navigate to LinkedIn
+                        chrome.tabs.create({ url: 'https://www.linkedin.com/jobs/search/' });
+                    });
+                }
+            } else if (!isAuthenticated) {
+                indicator.innerHTML = `
+                    <div style="color: #b50000;">
+                        <h3 style="margin: 0 0 10px 0;">🔒 Authentication Required</h3>
+                        <p style="margin: 0;">Please log in to enable auto-apply functionality.</p>
+                        <button id="login-button" style="margin-top: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Login Now
+                        </button>
+                    </div>
+                `;
+                indicator.style.background = '#ffeaea';
+                indicator.style.borderColor = '#f44336';
+                
+                // Add event listener to login button
+                const loginButton = indicator.querySelector('#login-button');
+                if (loginButton) {
+                    loginButton.addEventListener('click', () => {
+                        window.location.href = chrome.runtime.getURL('popup/auth/login.html');
+                    });
+                }
+            } else {
+                indicator.innerHTML = `
+                    <div style="color: #ff9800;">
+                        <h3 style="margin: 0 0 10px 0;">⚠ Setup Required</h3>
+                        <p style="margin: 0;">Complete ${requiredFields.length - filledCount} more fields to enable auto-apply.</p>
+                        <div style="margin-top: 10px;">
+                            <div style="background: #e0e0e0; border-radius: 10px; height: 20px; overflow: hidden;">
+                                <div style="background: #ff9800; height: 100%; width: ${(filledCount / requiredFields.length) * 100}%; transition: width 0.3s ease;"></div>
+                            </div>
+                            <small style="margin-top: 5px; display: block;">${filledCount}/${requiredFields.length} fields completed</small>
+                        </div>
+                    </div>
+                `;
+                indicator.style.background = '#fff3e0';
+                indicator.style.borderColor = '#ff9800';
             }
         });
     }
     
-    updateSyncInfo(messageElement, syncedCount) {
-        const existingSyncInfo = messageElement.parentNode.querySelector('.sync-info');
+    // Add auto-apply test button
+    addAutoApplyTestButton(messageElement) {
+        const existingButton = messageElement.querySelector('.auto-apply-test-button');
+        if (existingButton) return;
+        
+        const testButton = document.createElement('button');
+        testButton.className = 'auto-apply-test-button';
+        testButton.textContent = 'Test Auto-Apply Setup';
+        testButton.style.cssText = `
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+        `;
+        
+        testButton.addEventListener('click', () => {
+            this.testAutoApplySetup();
+        });
+        
+        messageElement.appendChild(testButton);
+    }
+    
+    // Test auto-apply setup
+    testAutoApplySetup() {
+        chrome.storage.local.get(['defaultFields', 'inputFieldConfigs', 'authToken', 'user'], (result) => {
+            const defaultFields = result.defaultFields || {};
+            const inputFieldConfigs = result.inputFieldConfigs || [];
+            const isAuthenticated = !!(result.authToken && result.user);
+            
+            let report = '🔍 Auto-Apply Setup Report:\n\n';
+            
+            // Authentication check
+            if (isAuthenticated) {
+                report += '✅ Authentication: Logged in\n';
+            } else {
+                report += '❌ Authentication: Not logged in\n';
+            }
+            
+            // Required fields check
+            report += '\n📋 Required Fields:\n';
+            const requiredFields = ['YearsOfExperience', 'FirstName', 'LastName', 'PhoneNumber', 'City', 'Email'];
+            requiredFields.forEach(field => {
+                const value = defaultFields[field];
+                const status = value && value.trim() ? '✅' : '❌';
+                const displayName = this.getInputLabelText(field);
+                report += `${status} ${displayName}: ${value || 'Not filled'}\n`;
+            });
+            
+            // Website configurations
+            report += '\n🌐 Website Configurations:\n';
+            if (inputFieldConfigs.length > 0) {
+                report += `✅ ${inputFieldConfigs.length} field configurations found\n`;
+                inputFieldConfigs.forEach(config => {
+                    const hasValue = config.defaultValue && config.defaultValue.trim();
+                    const status = hasValue ? '✅' : '⚠️';
+                    report += `${status} ${config.placeholderIncludes}: ${config.defaultValue || 'No default value'}\n`;
+                });
+            } else {
+                report += '⚠️ No website configurations found\n';
+                report += '   (These will be created automatically when you visit LinkedIn job pages)\n';
+            }
+            
+            // Overall readiness
+            const allRequiredFilled = requiredFields.every(field => 
+                defaultFields[field] && defaultFields[field].trim()
+            );
+            
+            report += '\n🎯 Overall Status:\n';
+            if (isAuthenticated && allRequiredFilled) {
+                report += '✅ Ready to use auto-apply!\n';
+                report += '\nYou can now:\n';
+                report += '• Go to LinkedIn job search pages\n';
+                report += '• Use the auto-apply feature from the extension popup\n';
+                report += '• The system will automatically fill forms with your data\n';
+            } else {
+                report += '❌ Not ready for auto-apply\n';
+                report += '\nTo get ready:\n';
+                if (!isAuthenticated) {
+                    report += '• Log in to your account\n';
+                }
+                if (!allRequiredFilled) {
+                    report += '• Fill out all required fields above\n';
+                }
+            }
+            
+            alert(report);
+        });
+    }
+    
+    // Enhanced sync info display
+    updateSyncInfo(messageElement, syncedCount, filledCount) {
+        const existingSyncInfo = messageElement.querySelector('.sync-info');
         if (existingSyncInfo) {
             existingSyncInfo.remove();
         }
         
-        if (syncedCount > 0) {
-            const syncInfo = document.createElement('div');
-            syncInfo.className = 'sync-info';
-            syncInfo.style.cssText = `
-                font-size: 12px;
-                color: #666;
-                margin-top: 5px;
-            `;
-            syncInfo.textContent = `${syncedCount} fields synced from website data`;
-            messageElement.parentNode.appendChild(syncInfo);
-        }
+         
+
+        const syncInfo = document.createElement('div');
+        syncInfo.className = 'sync-info';
+        syncInfo.style.cssText = `
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #007700;
+        `;
+        
+        syncInfo.innerHTML = `
+            <strong>Setup Complete:</strong><br>
+            • ${filledCount} personal fields configured<br>
+            ${syncedCount > 0 ? `• ${syncedCount} website fields synced<br>` : ''}
+            • Ready for LinkedIn job applications
+        `;
+        
+        messageElement.appendChild(syncInfo);
     }
     
+    // Add progress indicator
+    addProgressIndicator(messageElement, filledCount, totalCount) {
+        const existingProgress = messageElement.querySelector('.progress-indicator');
+        if (existingProgress) {
+            existingProgress.remove();
+        }
+        
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'progress-indicator';
+        progressContainer.style.cssText = `
+            margin-top: 15px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        `;
+        
+        const progressBar = document.createElement('div');
+        progressBar.style.cssText = `
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        `;
+        
+        const progressFill = document.createElement('div');
+        const percentage = (filledCount / totalCount) * 100;
+        progressFill.style.cssText = `
+            background: ${percentage === 100 ? '#4caf50' : '#2196f3'};
+            height: 100%;
+            width: ${percentage}%;
+            transition: width 0.3s ease;
+        `;
+        
+        progressBar.appendChild(progressFill);
+        
+        const progressText = document.createElement('div');
+        progressText.style.cssText = `
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        `;
+        progressText.textContent = `${filledCount}/${totalCount} fields completed (${Math.round(percentage)}%)`;
+        
+        progressContainer.appendChild(progressBar);
+        progressContainer.appendChild(progressText);
+        messageElement.appendChild(progressContainer);
+    }
+    
+    // Remove sync info
     removeSyncInfo(messageElement) {
-        const existingSyncInfo = messageElement.parentNode.querySelector('.sync-info');
+        const existingSyncInfo = messageElement.querySelector('.sync-info');
         if (existingSyncInfo) {
             existingSyncInfo.remove();
         }
     }
     
-    // Form Field Management
-    createInputField(fieldName, fieldValue) {
-        const fieldContainer = document.createElement('div');
-        fieldContainer.classList.add('field-container');
-        
-        const inputLabel = document.createElement('label');
-        inputLabel.textContent = this.getInputLabelText(fieldName);
-        
-        const inputField = document.createElement('input');
-        inputField.setAttribute('name', fieldName);
-        inputField.value = fieldValue || '';
-        
-        if (!inputField.value) {
-            inputField.classList.add('input-error');
-        }
-        
-        fieldContainer.appendChild(inputLabel);
-        fieldContainer.appendChild(inputField);
-        
-        return fieldContainer;
-    }
-    
+    // Get input label text
     getInputLabelText(fieldName) {
         const labels = {
             'YearsOfExperience': 'Years of Experience',
@@ -537,110 +539,22 @@ class FormManager {
             'City': 'City',
             'Email': 'Email'
         };
-        
         return labels[fieldName] || fieldName;
     }
     
-    // Sync Functions
-    syncWebsiteDataWithForm() {
-        chrome.storage.local.get(['inputFieldConfigs', 'defaultFields'], (result) => {
-            const inputFieldConfigs = result.inputFieldConfigs || [];
-            const defaultFields = result.defaultFields || this.defaultNullFieldInput;
-            
-            let updatedDefaultFields = { ...defaultFields };
-            let hasUpdates = false;
-            
-            inputFieldConfigs.forEach(config => {
-               const websiteFieldName = config.placeholderIncludes.trim();
-const formFieldName = this.fieldMapping[websiteFieldName] 
-  || this.fieldMapping[websiteFieldName.toLowerCase()];
-
-                
-                if (formFieldName && config.defaultValue && config.defaultValue.trim() !== '') {
-                    if (!updatedDefaultFields[formFieldName] || 
-                        updatedDefaultFields[formFieldName] !== config.defaultValue) {
-                        updatedDefaultFields[formFieldName] = config.defaultValue;
-                        hasUpdates = true;
-                        console.log(`Synced ${websiteFieldName} -> ${formFieldName}: ${config.defaultValue}`);
-                    }
-                }
-            });
-            
-            if (hasUpdates) {
-                chrome.storage.local.set({ 'defaultFields': updatedDefaultFields }, () => {
-                    this.renderInputFields(updatedDefaultFields);
-                    this.updateStatusMessage();
-                    console.log('Form synced with website data');
-                });
-            } else {
-                this.renderInputFields(updatedDefaultFields);
-                this.updateStatusMessage();
-            }
-        });
-    }
-    
-    renderInputFields(defaultFields) {
-        const inputFieldsContainer = document.getElementById('default-input-fields');
-        if (!inputFieldsContainer) return;
-        
-        inputFieldsContainer.innerHTML = '';
-        
-        chrome.storage.local.get(['inputFieldConfigs'], (result) => {
-            const inputFieldConfigs = result.inputFieldConfigs || [];
-            
-            for (const fieldName in defaultFields) {
-                const fieldContainer = this.createInputField(fieldName, defaultFields[fieldName]);
-                
-                const websiteFieldName = this.reverseFieldMapping[fieldName];
-                const websiteConfig = inputFieldConfigs.find(config => 
-                    config.placeholderIncludes === websiteFieldName
-                );
-                
-                if (websiteConfig && websiteConfig.defaultValue) {
-                    this.addSyncIndicator(fieldContainer);
-                }
-                
-                inputFieldsContainer.appendChild(fieldContainer);
-            }
-            
-            this.updateStatusMessage();
-            setTimeout(() => this.setupInputFieldEventListeners(), 100);
-        });
-    }
-    
-    addSyncIndicator(fieldContainer) {
-        const syncIndicator = document.createElement('span');
-        syncIndicator.className = 'sync-indicator';
-        syncIndicator.textContent = '(synced from website)';
-        syncIndicator.style.cssText = `
-            color: #666;
-            font-size: 12px;
-            margin-left: 10px;
-        `;
-        
-        const label = fieldContainer.querySelector('label');
-        label.appendChild(syncIndicator);
-    }
-    
-    setupInputFieldEventListeners() {
-        const defaultInputContainers = document.querySelectorAll('#default-input-fields .field-container');
-        
-        defaultInputContainers.forEach((fieldContainer) => {
-            const inputs = fieldContainer.querySelectorAll('input');
-            inputs.forEach((input) => {
-                if (!input.dataset.listenerAdded) {
-                    input.addEventListener('change', async (event) => {
-                        await this.handleInputChange(event);
-                    });
-                    input.dataset.listenerAdded = 'true';
-                }
-            });
-        });
-    }
-    
+    // Override the original handleInputChange to include readiness updates
     async handleInputChange(event) {
         const fieldName = event.target.getAttribute('name');
         const fieldValue = event.target.value.trim();
+        
+        // Update visual feedback
+        if (fieldValue) {
+            event.target.classList.remove('input-error');
+            event.target.classList.add('input-success');
+        } else {
+            event.target.classList.add('input-error');
+            event.target.classList.remove('input-success');
+        }
         
         // Update default fields
         await new Promise((resolve) => {
@@ -657,68 +571,183 @@ const formFieldName = this.fieldMapping[websiteFieldName]
             await this.updateConfigDefaultFields(websiteFieldName, fieldValue);
         }
         
+        // Update all status displays
         this.updateStatusMessage();
-    }
-    
-    // UI Enhancement Functions
-    addSyncButton() {
-        const headerElement = document.querySelector('.default-input-header');
-        if (headerElement) {
-            const syncButton = this.createSyncButton();
-            headerElement.parentNode.insertBefore(syncButton, headerElement.nextSibling);
-        }
-    }
-    
-    createSyncButton() {
-        const syncButton = document.createElement('button');
-        syncButton.textContent = 'Sync with Website Data';
-        syncButton.className = 'sync-button';
-        syncButton.style.cssText = `
-            background-color: #0066cc;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 10px 0;
-            font-size: 12px;
-        `;
+        this.updateReadinessIndicator();
         
-        syncButton.addEventListener('click', () => {
-            syncButton.textContent = 'Syncing...';
-            syncButton.disabled = true;
-            
-            this.syncWebsiteDataWithForm();
-            
-            setTimeout(() => {
-                syncButton.textContent = 'Sync with Website Data';
-                syncButton.disabled = false;
-            }, 1000);
+        // Notify popup and other parts of the extension
+        chrome.runtime.sendMessage({ 
+            action: 'formFieldUpdated', 
+            fieldName, 
+            fieldValue 
         });
         
-        return syncButton;
+        // Also notify about readiness change
+        const readinessCheck = await this.checkFormControlReadiness();
+        chrome.runtime.sendMessage({ 
+            action: 'formControlReadinessChanged', 
+            data: readinessCheck 
+        });
     }
     
-    startAutoSync() {
-        setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                this.syncWebsiteDataWithForm();
-            }
-        }, 30000);
-    }
-    
-    // Debug Functions
-    forceStatusUpdate() {
-        chrome.storage.local.get('defaultFields', (result) => {
+    // Setup initial load
+    setupInitialLoad() {
+        chrome.storage.local.get(['defaultFields'], (result) => {
             const defaultFields = result.defaultFields || {};
-            this.renderInputFields(defaultFields);
+            
+            // Fill form fields with stored values
+            Object.keys(this.defaultNullFieldInput).forEach(fieldName => {
+                const input = document.querySelector(`input[name="${fieldName}"]`);
+                if (input) {
+                    input.value = defaultFields[fieldName] || '';
+                    // Add visual feedback
+                    if (input.value.trim()) {
+                        input.classList.add('input-success');
+                    } else {
+                        input.classList.add('input-error');
+                    }
+                }
+            });
+            
+            // Update status message
             this.updateStatusMessage();
         });
     }
+    
+    // Setup storage listeners
+    setupStorageListeners() {
+        chrome.storage.onChanged.addListener((changes, namespace) => {
+            if (namespace === 'local') {
+                if (changes.defaultFields || changes.inputFieldConfigs || changes.authToken || changes.user) {
+                    this.updateStatusMessage();
+                    this.updateReadinessIndicator();
+                }
+            }
+        });
+    }
+    
+    // Setup observer for form changes
+    setupObserver() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    // Re-setup event listeners if form is dynamically updated
+                    this.setupFormEventListeners();
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+    
+    // Setup form event listeners
+    setupFormEventListeners() {
+        const inputs = document.querySelectorAll('input[name]');
+        inputs.forEach(input => {
+            if (!input.hasAttribute('data-listener-attached')) {
+                input.addEventListener('input', (event) => {
+                    this.handleInputChange(event);
+                });
+                input.setAttribute('data-listener-attached', 'true');
+            }
+        });
+    }
+    
+    // Update config default fields
+    async updateConfigDefaultFields(fieldName, fieldValue) {
+        return new Promise((resolve) => {
+            chrome.storage.local.get('inputFieldConfigs', (result) => {
+                const configs = result.inputFieldConfigs || [];
+                let updated = false;
+                
+                configs.forEach(config => {
+                    if (config.placeholderIncludes === fieldName) {
+                        config.defaultValue = fieldValue;
+                        updated = true;
+                    }
+                });
+                
+                if (updated) {
+                    chrome.storage.local.set({ 'inputFieldConfigs': configs }, resolve);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+    
+    // Enhanced CSS for better visual feedback
+    addEnhancedStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .input-error {
+                border-color: #f44336 !important;
+                background-color: #ffebee !important;
+            }
+            
+            .input-success {
+                border-color: #4caf50 !important;
+                background-color: #e8f5e8 !important;
+            }
+            
+            .field-container {
+                margin-bottom: 15px;
+            }
+            
+            .field-container label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: bold;
+            }
+            
+            .field-container input {
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                transition: all 0.3s ease;
+            }
+            
+            .field-container input:focus {
+                outline: none;
+                border-color: #2196f3;
+                box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+            }
+            
+            #auto-apply-readiness-indicator {
+                transition: all 0.3s ease;
+            }
+            
+            #auto-apply-readiness-indicator button {
+                transition: all 0.2s ease;
+            }
+            
+            #auto-apply-readiness-indicator button:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
+// Initialize the FormManager when the script loads
+document.addEventListener('DOMContentLoaded', () => {
+    const formManager = new FormManager();
+    formManager.addEnhancedStyles();
+    formManager.setupFormEventListeners();
+    
+    // Make it globally accessible for debugging
+    window.formManager = formManager;
+});
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = FormManager;
+}
 // Initialize the form manager
 const formManager = new FormManager();
-
-// Make forceStatusUpdate available globally for debugging
-window.forceStatusUpdate = () => formManager.forceStatusUpdate();
+window.formManager = formManager; // 👈 Make it accessible globally

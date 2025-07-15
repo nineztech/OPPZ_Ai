@@ -2514,3 +2514,5 @@ if (document.readyState === 'loading') {
 
 // Also initialize immediately in case DOMContentLoaded has already fired
 initializeContentScript();
+
+window.runScript = runScript;

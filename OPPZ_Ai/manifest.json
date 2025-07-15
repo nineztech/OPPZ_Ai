@@ -4,15 +4,15 @@
   "version": "1.0",
   "description": "Applying for Jobs Made Effortless!",
   "icons": {
-    "16": "assets/images/256256.png",
-    "48": "assets/images/256256.png",
-    "128": "assets/images/256256.png"
+    "16": "/assets/images/OPPZ_Ai_Logo.jpeg",
+    "48": "/assets/images/OPPZ_Ai_Logo.jpeg",
+    "128": "/assets/images/OPPZ_Ai_Logo.jpeg"
   },
   "action": {
     "default_icon": {
-      "16": "assets/images/256256.png",
-      "48": "assets/images/256256.png",
-      "128": "assets/images/256256.png"
+      "16": "/assets/images/OPPZ_Ai_Logo.jpeg",
+      "48": "/assets/images/OPPZ_Ai_Logo.jpeg",
+      "128": "/assets/images/OPPZ_Ai_Logo.jpeg"
     },
     "default_popup": "popup/auth/login.html",
     "default_title": "CONFIGURATION"

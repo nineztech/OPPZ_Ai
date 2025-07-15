@@ -1,7 +1,9 @@
 import React from 'react';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import OPPZAIProcess from './Steps'
 import Footer from '../../Footer/Footer';
+import {Link } from 'react-router-dom';
+
 const Home: React.FC = () => {
   return (
     <div>
@@ -20,15 +22,18 @@ const Home: React.FC = () => {
             Smarter, Faster, More Secure Recruitment Powered by AI and Web3
           </p>
           
-          <div className="flex items-center space-x-4 mb-12">
-            <button className="bg-white text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors flex items-center space-x-2 font-semibold">
+          <div className="flex items-center mb-12">
+            <Link to="/Signup" className="border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2">
               <ArrowRight className="w-5 h-5" />
               <span>Get Started Free</span>
-            </button>
-            <button className="border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2">
-              <Play className="w-5 h-5" />
-              <span>Book a Demo</span>
-            </button>
+            </Link>
+            {/* <Link
+  to="/Contact"
+  className="border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2"
+>
+  <Play className="w-5 h-5" />
+  <span>Book a Demo</span>
+</Link> */}
           </div>
 
           {/* Statistics */}
@@ -97,24 +102,24 @@ const Home: React.FC = () => {
       </main>
       <div className='text-center py-12'>
           <p className="text-blue-100 text-xl mb-8 mx-auto leading-relaxed">
-            Smarter, Faster, More Secure Recruitment Powered by AI and Web3
+            Trusted by 3,000+ job seekers 
           </p>
            <button className="border-2 mx-auto border-white text-white px-8 py-4 rounded-full hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2">
-              <Play className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5 transition-transform duration-500 ease-in-out group-hover:translate-x-1" />
               <span>Try-Free Chrome Extention</span>
             </button>
       </div>
 
     </div>
    <div className="min-h-screen bg-black text-center flex flex-col items-center justify-center px-4">
-  <p className="text-white font-bold text-6xl mb-2 leading-relaxed">
-    Watch Teemo Ai In Action
+  <p className="text-white font-bold text-4xl mb-2 leading-relaxed">
+    Watch OPPZ Ai In Action
   </p>
   <div className="w-full max-w-4xl aspect-video">
     <video
       className="w-full h-full rounded-lg shadow-lg"
       src="/auto_Applyed.mp4"
-      title="Teemo AI Demo"
+      title="OPPZ AI Demo"
       controls
       autoPlay
       loop
@@ -125,7 +130,7 @@ const Home: React.FC = () => {
 </div>
 <OPPZAIProcess />
  <div className="min-h-screen bg-black text-center flex flex-col items-center justify-center px-4">
-  <p className="text-white font-bold text-6xl mb-2 leading-relaxed">
+  <p className="text-white font-bold text-4xl mb-2 leading-relaxed">
     Track every Job You are applying to!
   </p>
   <div className="w-full max-w-4xl aspect-video">

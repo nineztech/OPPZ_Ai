@@ -34,6 +34,9 @@ button:hover {
 	gap: 20px;
 	min-width: var(--container-min-width);
 	padding: 10px 10px 0 10px;
+	border-radius: 15px;
+	padding: 10px;
+	
 }
 
 /* Each "column" or "group" */

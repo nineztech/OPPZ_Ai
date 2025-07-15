@@ -1,4 +1,4 @@
-// routes/UserProfileRoutes.js
+// Enhanced routes/UserProfileRoutes.js with update endpoints
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -6,10 +6,14 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { 
-  createProfile, 
+  createProfile,
+  updateProfile,
+  createOrUpdateProfile,
   getAllProfiles, 
-  getProfileById, 
-  deleteProfile 
+  getProfileById,
+  getProfileByEmail,
+  deleteProfile,
+  partialUpdateProfile
 } from '../controller/UserProfileController.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -144,9 +148,11 @@ const handleMulterError = (error, req, res, next) => {
   });
 };
 
-// Routes
-router.post('/profile', (req, res, next) => {
-  console.log("📥 POST /profile called");
+// Profile Routes
+
+// Create new profile (POST)
+router.post('/profile/create', (req, res, next) => {
+  console.log("📥 POST /profile/create called");
   upload.single('resume')(req, res, (err) => {
     if (err) {
       return handleMulterError(err, req, res, next);
@@ -155,8 +161,52 @@ router.post('/profile', (req, res, next) => {
   });
 }, createProfile);
 
-router.get('/profiles', getAllProfiles);                           // Get all profiles
-router.get('/profile/:id', getProfileById);                        // Get single profile
-router.delete('/profile/:id', deleteProfile);                      // Delete profile
+// Update existing profile by ID (PUT)
+router.put('/profile/:id', (req, res, next) => {
+  console.log("📥 PUT /profile/:id called");
+  upload.single('resume')(req, res, (err) => {
+    if (err) {
+      return handleMulterError(err, req, res, next);
+    }
+    next();
+  });
+}, updateProfile);
+
+// Partial update profile by ID (PATCH)
+router.patch('/profile/:id', (req, res, next) => {
+  console.log("📥 PATCH /profile/:id called");
+  upload.single('resume')(req, res, (err) => {
+    if (err) {
+      return handleMulterError(err, req, res, next);
+    }
+    next();
+  });
+}, partialUpdateProfile);
+
+// Create or update profile (existing functionality)
+router.post('/profile', (req, res, next) => {
+  console.log("📥 POST /profile called");
+  upload.single('resume')(req, res, (err) => {
+    if (err) {
+      return handleMulterError(err, req, res, next);
+    }
+    next();
+  });
+}, createOrUpdateProfile);
+
+// Get all profiles (GET)
+router.get('/profiles', getAllProfiles);
+
+// Get single profile by ID (GET)
+router.get('/profile/:id', getProfileById);
+
+// Get profile by email (GET)
+router.get('/profile/email/:email', getProfileByEmail);
+
+// Delete profile by ID (DELETE)
+router.delete('/profile/:id', deleteProfile);
+
+// Serve uploaded files
+router.use('/uploads', express.static(uploadsDir));
 
 export default router;

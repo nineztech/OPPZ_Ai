@@ -173,7 +173,9 @@ const ProfileBuilder: React.FC = () => {
             
             try {
               // Use the email-specific endpoint
-              const response = await fetch(`${api_baseUrl}/api/profile/email/${encodeURIComponent(userEmail)}`);
+             const response = await fetch(`${api_baseUrl}/api/profile/email/${encodeURIComponent(userEmail)}`);
+;
+
               console.log("📡 Profile fetch response status:", response.status);
               
               if (response.ok) {
@@ -650,8 +652,8 @@ const ProfileBuilder: React.FC = () => {
                       />
                     </div>
                   ))}
-                  <div className="w-20 h-12 rounded-xl bg-orange-200 flex flex-col items-center justify-center shadow text-orange-600 font-semibold text-xs text-center p-2 mt-[30px]">
-                    <span className="text-xs text-orange-800 font-medium">Growth EX.</span>
+                  <div className="w-20 h-12 rounded-xl bg-gray-200 flex flex-col items-center justify-center shadow text-orange-600 font-semibold text-xs text-center mt-[30px]">
+                    <span className="text-xs flex-row text-orange-800 font-medium">Growth EX.</span>
                     <span className="text-xl font-bold">
                       {calculateGrowthExpectation(data.currentSalary, data.expectedSalary)}%
                     </span>

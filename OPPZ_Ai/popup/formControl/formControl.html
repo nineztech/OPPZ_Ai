@@ -33,7 +33,39 @@
             </div>
             
             <!-- Input Fields -->
-            <section id="default-input-fields"></section>
+           <!-- Input Fields -->
+<section id="default-input-fields">
+  <div class="field-container">
+    <label for="YearsOfExperience">Years of Experience</label>
+    <input name="YearsOfExperience" type="text" />
+  </div>
+
+  <div class="field-container">
+    <label for="FirstName">First Name</label>
+    <input name="FirstName" type="text" />
+  </div>
+
+  <div class="field-container">
+    <label for="LastName">Last Name</label>
+    <input name="LastName" type="text" />
+  </div>
+
+  <div class="field-container">
+    <label for="PhoneNumber">Phone Number</label>
+    <input name="PhoneNumber" type="text" />
+  </div>
+
+  <div class="field-container">
+    <label for="City">City</label>
+    <input name="City" type="text" />
+  </div>
+
+  <div class="field-container">
+    <label for="Email">Email</label>
+    <input name="Email" type="email" />
+  </div>
+</section>
+
             
             <!-- Sync Information -->
             <div id="sync-info-panel" style="display: none; margin-top: 15px; padding: 10px; background-color: #f0f8ff; border-radius: 4px; border: 1px solid #0066cc;">
@@ -67,7 +99,7 @@
         </div>
     </div>
     
-    <script>
+    <!-- <script>
         // Enhanced JavaScript for the form control
         
         // Field mapping for display
@@ -198,8 +230,9 @@
                 showSyncInfo();
             }, 5000);
         });
-    </script>
+    </script> -->
     
-    <script src='formControl.js'></script>
+   <script src="formControl.js"></script>
+<script src="formControl.init.js" type="module"></script>
 </body>
 </html>

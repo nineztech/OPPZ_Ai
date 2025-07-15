@@ -307,7 +307,7 @@ function handleStartAutoApply(request, sender, sendResponse) {
 function handleAutoApplyStop(tabId, sendResponse) {
     chrome.storage.local.set({ 'autoApplyRunning': false }, () => {
         if (!tabId) {
-            sendResponse({ success: false, message: 'No tab ID provided.' });
+             
             return;
         }
         
@@ -586,10 +586,17 @@ function clearAuthData() {
 
 // Content script execution function
 function runScriptInContent() {
-    if (typeof runScript === 'function') {
-        runScript();
+  try {
+    if (window.runScript && typeof window.runScript === 'function') {
+      window.runScript();
+    } else {
+      console.error("runScript is not defined in page context");
     }
+  } catch (err) {
+    console.error("Error in runScriptInContent:", err);
+  }
 }
+
 
 // Extension installation/startup handler
 chrome.runtime.onInstalled.addListener(() => {

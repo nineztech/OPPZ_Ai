@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 const OPPZAIProcess: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white p-8">
-      <p className="text-center text-6xl font-bold mb-20">How It Works?</p>
+      <p className="text-center text-4xl font-bold mb-20">How It Works?</p>
       <div className="max-w-7xl mx-auto">
         {/* Steps Header */}
         <div className="flex justify-between items-center mb-12">
