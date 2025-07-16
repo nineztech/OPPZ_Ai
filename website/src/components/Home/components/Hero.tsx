@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight} from 'lucide-react';
 import OPPZAIProcess from './Steps'
 import Footer from '../../Footer/Footer';
 import {Link } from 'react-router-dom';
@@ -13,14 +13,15 @@ const Home: React.FC = () => {
       {/* Main Content */}
       <main className="flex items-center justify-between px-6 py-16 max-w-7xl mx-auto">
         {/* Left Column */}
-        <div className="flex-1 max-w-2xl">
-          <h1 className="text-white text-5xl md:text-6xl font-bold leading-tight mb-6">
-            Revolutionize Your Hiring with AI
+        <div className="flex-1 max-w-2xl -mt-20">
+          <h1 className="text-white text-5xl mt-2 md:text-5xl font-bold leading-tight mb-6">
+         Effortless Job Applications with AI — Focus on Success, Not for job application.<img src="./OPPZ_Ai_Logo.png" alt="OPPZ AI Logo" className="inline-block h-12 ml-2" />
           </h1>
           
           <p className="text-blue-100 text-xl mb-8 leading-relaxed">
-            Smarter, Faster, More Secure Recruitment Powered by AI and Web3
+            Emphasizes speed, efficiency, and AI value.
           </p>
+           
           
           <div className="flex items-center mb-12">
             <Link to="/Signup" className="border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2">
@@ -50,57 +51,23 @@ const Home: React.FC = () => {
         </div>
 
         {/* Right Column - Image */}
-        <div className="flex-1 max-w-lg ml-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-            <div className="bg-gray-800 rounded-lg p-6 mb-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              </div>
-              <div className="space-y-3">
-                <div className="h-4 bg-gray-600 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-600 rounded w-1/2"></div>
-                <div className="h-4 bg-gray-600 rounded w-5/6"></div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">AI</span>
-                </div>
-                <div className="flex-1">
-                  <div className="h-3 bg-white/20 rounded w-full"></div>
-                  <div className="h-3 bg-white/20 rounded w-2/3 mt-2"></div>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">HR</span>
-                </div>
-                <div className="flex-1">
-                  <div className="h-3 bg-white/20 rounded w-4/5"></div>
-                  <div className="h-3 bg-white/20 rounded w-1/2 mt-2"></div>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">JD</span>
-                </div>
-                <div className="flex-1">
-                  <div className="h-3 bg-white/20 rounded w-3/4"></div>
-                  <div className="h-3 bg-white/20 rounded w-5/6 mt-2"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+       <div className="max-w-xl h-[500px] ml-8 ">
+       <div className="bg-white/10 h-[400px] backdrop-blur-sm rounded-2xl p-4 border border-white/20 overflow-hidden">
+       <video
+        className="w-full h-full rounded-lg object-cover"
+        src="/Home_video.mp4"
+        title="OPPZ AI Demo"
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
+      </div>
+      </div>
+
          
       </main>
-      <div className='text-center py-12'>
+      <div className='text-center -mt-8 py-12'>
           <p className="text-blue-100 text-xl mb-8 mx-auto leading-relaxed">
             Trusted by 3,000+ job seekers 
           </p>
@@ -111,23 +78,39 @@ const Home: React.FC = () => {
       </div>
 
     </div>
-   <div className="min-h-screen bg-black text-center flex flex-col items-center justify-center px-4">
-  <p className="text-white font-bold text-4xl mb-2 leading-relaxed">
-    Watch OPPZ Ai In Action
-  </p>
-  <div className="w-full max-w-4xl aspect-video">
-    <video
-      className="w-full h-full rounded-lg shadow-lg"
-      src="/auto_Applyed.mp4"
-      title="OPPZ AI Demo"
-      controls
-      autoPlay
-      loop
-    ></video>
-  </div>
-  
 
+  <div className="min-h-screen/4 bg-black text-white flex items-center justify-center px-4 py-12">
+  <div className="flex flex-col md:flex-row items-center md:items-start p-4 gap-10 max-w-7xl w-full">
+    
+    {/* Video Section */}
+    <div className="w-full md:w-1/2">
+      <video
+        className="w-full   rounded-lg p-8shadow-lg  object-cover"
+        src="/auto_Applyed.mp4"
+        title="OPPZ AI Demo"
+        autoPlay
+        loop
+        muted
+        playsInline
+      ></video>
+    </div>
+
+    {/* Description Section */}
+    <div className="w-full md:w-1/2 text-left space-y-4">
+      <h2 className="text-4xl font-bold">Watch OPPZ Ai In Action</h2>
+      <p className="text-lg text-gray-300">
+  Discover how OPPZ AI transforms your job search into a fully automated experience. With just a few clicks, our intelligent system scans listings, fills out applications, and submits them on your behalf — saving you hours every day.
+</p>
+<p className="text-md text-gray-400">
+  Whether you're job hunting full-time or casually exploring new opportunities, OPPZ AI ensures you never miss a chance. Stay ahead of the competition, eliminate repetitive tasks, and land interviews faster — all while you focus on preparing for your next big role.
+</p>
+
+    </div>
+
+  </div>
 </div>
+
+
 <OPPZAIProcess />
  <div className="min-h-screen bg-black text-center flex flex-col items-center justify-center px-4">
   <p className="text-white font-bold text-4xl mb-2 leading-relaxed">

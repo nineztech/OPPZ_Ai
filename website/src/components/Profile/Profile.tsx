@@ -67,6 +67,7 @@ const ProfileBuilder: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Personal Details');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailInitial, setEmailInitial] = useState<string | null>(null);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>({
     completed: false,
     timestamp: 0,
@@ -388,8 +389,30 @@ const ProfileBuilder: React.FC = () => {
     loadProfile();
   }, [loadProfile]);
 
+  useEffect(() => {
+  const storedEmail = localStorage.getItem('userEmail');
+  if (storedEmail) {
+    setEmailInitial(storedEmail);
+    setData(prev => ({ ...prev, email: storedEmail })); // 🔥 This ensures it gets saved!
+  }
+}, []);
+
   // Update status whenever relevant data changes
   useEffect(() => {
+
+const getEmailInitialSafe = () => {
+      try {
+        const stored = localStorage.getItem('userEmail');
+        return stored ? stored : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const initial = getEmailInitialSafe();
+    setEmailInitial(initial);
+  
+
     const timeoutId = setTimeout(() => {
       updateProfileStatus();
     }, 300); // Debounce to avoid too many updates
@@ -708,7 +731,7 @@ const ProfileBuilder: React.FC = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading profile...</p>
-          <p className="text-sm text-gray-500 mt-2">API URL: {api_baseUrl}</p>
+          {/* <p className="text-sm text-gray-500 mt-2">API URL: {api_baseUrl}</p> */}
         </div>
       </div>
     );
@@ -722,6 +745,7 @@ const ProfileBuilder: React.FC = () => {
             <div className="text-center bg-gradient-to-br from-indigo-500 to-purple-600 rounded-t-2xl text-white py-8">
               <h1 className="text-3xl ml-8 font-bold flex justify-center items-center gap-2">
                 <UserCog className="w-10 h-10" /> Shape Your Job Profile
+                {/* {emailInitial && <p>Email from login/signup: {emailInitial}</p>} */}
               </h1>
               <p className="text-sm justify-center items-center ml-8">Customize and optimize your job application preferences to match your dream role.</p>
             </div>
@@ -732,6 +756,7 @@ const ProfileBuilder: React.FC = () => {
                 <div className="flex items-center">
                   <span className="font-medium">Error:</span>
                   <span className="ml-2">{error}</span>
+                   <p>Logged in as: {emailInitial}</p>
                   <button
                     onClick={() => setError(null)}
                     className="ml-auto text-red-500 hover:text-red-700"
@@ -806,6 +831,7 @@ const ProfileBuilder: React.FC = () => {
                 </div>
               </div>
             </div>
+             
 
             {activeTab === 'Personal Details' && (
               <div className="p-6 space-y-6">
@@ -840,21 +866,33 @@ const ProfileBuilder: React.FC = () => {
 
                 {/* Input Fields */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {['firstName', 'lastName', 'email', 'experience', 'city', 'age', 'noticePeriod'].map((field) => (
+                  {['firstName', 'lastName', 'email/Username', 'experience', 'city', 'age', 'noticePeriod'].map((field) => (
                     <div key={field} className="flex flex-col">
                       <label className="mb-2 text-sm font-medium text-black">
                         {field === 'experience' ? 'Experience (Years)' : field === 'noticePeriod' ? 'Notice Period (In Days)' : field.charAt(0).toUpperCase() + field.slice(1)}{' '}
                         {requiredFields.includes(field) && <span className="text-red-400">*</span>}
                       </label>
-                      <input
-                        id={field}
-                        name={field}
-                        type={field === 'email' ? 'email' : 'text'}
-                        value={data[field as keyof ProfileData]}
-                        onChange={handleChange}
-                        className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black"
-                        disabled={loading}
+                     {field === 'email/Username' ? (
+                       <input
+                       id={field}
+                       name={field}
+                       type="email"
+                       value={data.email} // coming from useState
+                       readOnly
+                       className="bg-gray-100 border border-black/35 rounded-lg px-4 py-3 text-black cursor-not-allowed"
                       />
+                    ) : (
+                      <input
+                      id={field}
+                      name={field}
+                      type="text"
+                      value={data[field as keyof ProfileData]}
+                      onChange={handleChange}
+                     className="bg-white/10 border border-black/35 rounded-lg px-4 py-3 text-black"
+                     disabled={loading}
+                       />
+             )}
+
                     </div>
                   ))}
 

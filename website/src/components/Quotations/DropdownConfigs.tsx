@@ -14,7 +14,7 @@ interface DropdownConfig {
   updatedAt?: string;
 }
 
-const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim';
+const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj';
 
 const isChromeExtension = () =>
   typeof chrome !== 'undefined' &&

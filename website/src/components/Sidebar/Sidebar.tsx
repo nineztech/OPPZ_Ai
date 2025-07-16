@@ -103,6 +103,22 @@ export const Sidebar: React.FC = () => {
         </div>
 
         <ul className="space-y-1 mt-2">
+           <SidebarLink
+            to="/profile"
+            icon={<User2 size={20} />}
+            text="Career Profile Summary"
+            navigate={navigate}
+            isProfileComplete={isProfileComplete}
+          />
+          <SidebarLink
+            to="/MainPage"
+            icon={<Bookmark size={20} />}
+            text="Questions Library"
+            restricted={!isProfileComplete}
+            onRestricted={handleBlockedRoute}
+            navigate={navigate}
+            isProfileComplete={isProfileComplete}
+          />
         <SidebarLink
            to="https://www.linkedin.com/jobs/search/?currentJobId=4240231968&f_AL=true&origin=JOB_SEARCH_PAGE_JOB_FILTER"
            icon={<PlayCircle size={20} />}
@@ -117,22 +133,6 @@ export const Sidebar: React.FC = () => {
             to="/AppliedJob"
             icon={<CheckSquare size={20} />}
             text="Application History"
-            restricted={!isProfileComplete}
-            onRestricted={handleBlockedRoute}
-            navigate={navigate}
-            isProfileComplete={isProfileComplete}
-          />
-          <SidebarLink
-            to="/profile"
-            icon={<User2 size={20} />}
-            text="Career Profile Summary"
-            navigate={navigate}
-            isProfileComplete={isProfileComplete}
-          />
-          <SidebarLink
-            to="/MainPage"
-            icon={<Bookmark size={20} />}
-            text="Questions Library"
             restricted={!isProfileComplete}
             onRestricted={handleBlockedRoute}
             navigate={navigate}

@@ -31,7 +31,7 @@ const MainPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl bg-[#f4ffee] mx-auto mt-6 p-4">
+    <div className="max-w-5xl bg-[#f0f0ff] mx-auto mt-6 p-4">
       <div className="bg-white rounded-2xl shadow-md">
         <div className="text-center mb-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-t-2xl text-white py-8">
           <h1 className="text-3xl ml-8 font-bold flex justify-center items-center gap-2">

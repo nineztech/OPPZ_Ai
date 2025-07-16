@@ -18,7 +18,7 @@ const defaultNullFieldInput: DefaultFields = {
   Email: '',
 };
 
-const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim'; 
+const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj'; 
 
 const isChromeExtension = () =>
   typeof chrome !== 'undefined' &&
@@ -120,21 +120,28 @@ const DefaultFieldsForm: React.FC = () => {
 
       try {
         const response = await new Promise<any>((resolve, reject) => {
-          chrome.runtime.sendMessage(
-            EXTENSION_ID,
-            {
-              from: 'website',
-              action: 'updateInputFieldValue',
-              data: fieldConfig,
-            },
-            (response) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(response);
-              }
-            }
-          );
+         if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+  chrome.runtime.sendMessage(
+    EXTENSION_ID,
+    {
+      from: 'website',
+      action: 'updateInputFieldValue',
+      data: fieldConfig,
+    },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        console.error("Extension message error:", chrome.runtime.lastError.message);
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(response);
+      }
+    }
+  );
+} else {
+  console.warn("Not in Chrome Extension environment");
+  reject(new Error("Not in Chrome Extension environment"));
+}
+
         });
 
         results.push({ field: key, success: response?.success || false });

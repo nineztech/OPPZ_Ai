@@ -2,7 +2,11 @@ import React, { useState,useCallback, useEffect } from 'react';
 import {
   Users, Trash2, Download, Mail, Phone,
   MapPin, Calendar, DollarSign, FileText, RefreshCw,
-  User, CheckCircle, Briefcase
+  User, CheckCircle, Briefcase,
+  CalendarClock,
+  VenetianMask,
+  Globe,
+  AlarmClock
 } from 'lucide-react';
 import config from '../../config';
 
@@ -178,7 +182,7 @@ useEffect(() => {
               </div>
               <div>
                 <h3 className="text-Black font-semibold">{userName}</h3>
-                <p className="text-black-900 text-sm">User</p>
+                 
                 <div className="flex items-center space-x-1 mt-1">
                   <CheckCircle className="w-4 h-4 text-green-500" />
                   <span className="text-green-700 text-xs">Verified</span>
@@ -277,24 +281,41 @@ useEffect(() => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                           <div className="flex items-center space-x-2 text-black-900">
                             <Mail className="w-4 h-4" />
-                            <span>{profile.email}</span>
+                            <p>Email:</p><span>{profile.email}</span>
                           </div>
                           <div className="flex items-center space-x-2 text-black-900">
                             <Phone className="w-4 h-4" />
-                            <span>{profile.phone}</span>
+                            <p>Phone:</p><span>+{profile.phone}</span>
                           </div>
                           <div className="flex items-center space-x-2 text-black-900">
                             <MapPin className="w-4 h-4" />
-                            <span>{profile.city}</span>
+                            <p>Location:</p><span>{profile.city}</span>
                           </div>
                           <div className="flex items-center space-x-2 text-black-900">
                             <Briefcase className="w-4 h-4" />
-                            <span>{profile.experience} years</span>
+                            <p>Experience:</p><span>{profile.experience} years</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-black-900">
+                            <CalendarClock className="w-4 h-4" />
+                            <p>Age:</p><span>{profile.age} years</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-black-900">
+                            <VenetianMask className="w-4 h-4" />
+                            <p>Gender:</p><span>{profile.gender}</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-black-900">
+                            <Globe className="w-4 h-4" />
+                            <p>Citizenship:</p><span>{profile.citizenship}</span>
+                          </div>
+                           
+                          <div className="flex items-center space-x-2 text-black-900">
+                            <AlarmClock className="w-4 h-4" />
+                            <p>Notice Period:</p><span>{profile.noticePeriod} Days</span>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex space-x-2 ml-4">
-                        <button
+              </div>
+              <div className="flex space-x-2 ml-4">
+                <button
                           className="p-2 bg-red-500 rounded-lg"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -311,56 +332,7 @@ useEffect(() => {
             )}
           </div>
 
-
-          {/* Middle Section: Profile Details + Salary */}
-          {selectedProfile && (
-            <div className="flex flex-col lg:flex-row gap-6">
-              {/* Profile Details */}
-              <div className="w-full lg:w-1/2   border-blue-600 bg-gray-200 rounded-xl p-6">
-                <div className="text-xl font-bold text-Black mb-4">Profile Details</div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><strong>Name:</strong> {selectedProfile.firstName} {selectedProfile.lastName}</div>
-                  <div><strong>Phone:</strong> {selectedProfile.phone}</div>
-                  <div><strong>Experience:</strong> {selectedProfile.experience} Years</div>
-                  <div><strong>Age:</strong> {selectedProfile.age}</div>
-                  <div><strong>Gender:</strong> {selectedProfile.gender}</div>
-                  <div><strong>Citizenship:</strong> {selectedProfile.citizenship}</div>
-                  <div><strong>Location:</strong> {selectedProfile.city}</div>
-                  <div><strong>Notice Period:</strong> {selectedProfile.noticePeriod} Days</div>
-                </div>
-              </div>
-
-              {/* Salary Details */}
-              <div className="w-full lg:w-1/2 bg-gray-200 rounded-xl p-6">
-                <div className="flex items-center space-x-2 mb-4">
-                  <DollarSign className="w-5 h-5 text-green-500" />
-                  <h3 className="text-lg font-semibold text-Black">Salary Details</h3>
-                </div>
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <label className="text-gray-900">Current</label>
-                    <div className="text-green-500 font-semibold text-lg">
-                      ${selectedProfile.currentSalary}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-gray-900">Expected</label>
-                    <div className="text-blue-400 font-semibold text-lg">
-                      ${selectedProfile.expectedSalary}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-gray-900">Growth Expectation</label>
-                    <div className="text-orange-500 font-semibold">
-                      {calculateGrowthExpectation(selectedProfile.currentSalary, selectedProfile.expectedSalary)}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom Section: Documents */}
+           {/* Middle Section: Documents */}
           {selectedProfile && (
             <div className="bg-gray-200 rounded-xl p-6">
               <div className="flex items-center space-x-2 mb-4">
@@ -393,13 +365,50 @@ useEffect(() => {
                 )}
 
                 {/* Placeholder for Cover Letter */}
-                <div className="bg-gray-400 rounded-lg p-4 opacity-50">
+                {/* <div className="bg-gray-400 rounded-lg p-4 opacity-50">
                   <div className="text-gray-900">Cover Letter</div>
                   <div className="text-gray-900 text-sm">Not uploaded</div>
+                </div> */}
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Section: Profile Details + Salary */}
+          {selectedProfile && (
+            <div className="flex flex-col lg:flex-row gap-6">
+              
+
+              {/* Salary Details */}
+              <div className="w-full lg:w-1/2 bg-gray-200 rounded-xl p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <DollarSign className="w-5 h-5 text-green-500" />
+                  <h3 className="text-lg font-semibold text-Black">Salary Details</h3>
+                </div>
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <label className="text-gray-900">Current</label>
+                    <div className="text-green-500 font-semibold text-lg">
+                      ${selectedProfile.currentSalary}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-900">Expected</label>
+                    <div className="text-blue-400 font-semibold text-lg">
+                      ${selectedProfile.expectedSalary}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-900">Growth Expectation</label>
+                    <div className="text-orange-500 font-semibold">
+                      {calculateGrowthExpectation(selectedProfile.currentSalary, selectedProfile.expectedSalary)}%
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
+
+           
         </div>
       </div>
     </div>

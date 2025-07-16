@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
- 
+ import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+
 
 interface SignUpFormData {
   firstname: string;
@@ -205,15 +207,43 @@ const SignUp: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="Phone" className="block text-sm font-medium text-gray-100">Phone Number</label>
-                <input
-                  type="number"
-                  id="Phone"
-                  name="Phone"
-                  value={formData.Phone}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  required
-                />
+                <PhoneInput
+  country={'us'} // or 'in' for default India
+  value={formData.Phone}
+  onChange={(phone) =>
+    setFormData((prev) => ({ ...prev, Phone: phone }))
+  }
+  inputProps={{
+    name: 'Phone',
+    required: true,
+    autoFocus: false,
+  }}
+  inputStyle={{
+    width: '100%',
+    height: '42px',
+    borderRadius: '0.5rem',
+    border: '1px solid #D1D5DB', // gray-300
+    paddingLeft: '48px',
+    fontSize: '0.875rem',
+    backgroundColor: 'white',
+    color: '#111827', // gray-900
+  }}
+  buttonStyle={{
+    border: 'none',
+    backgroundColor: 'transparent',
+  }}
+  containerStyle={{
+    width: '100%',
+    borderRadius: '0.5rem',
+    border: '1px solid transparent',
+    backgroundColor: 'white',
+  }}
+  dropdownStyle={{
+    borderRadius: '0.5rem',
+    fontSize: '0.875rem',
+  }}
+/>
+
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-100">Email/Username</label>
