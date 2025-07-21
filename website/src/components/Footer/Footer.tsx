@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Facebook, Instagram, Youtube } from 'lucide-react';
+ 
 
 const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
