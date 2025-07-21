@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-
+import Footer from '../../Footer/Footer';
 interface FAQItem {
   question: string;
   answer: string;
@@ -52,10 +52,12 @@ const FAQ: React.FC = () => {
   };
 
   return (
-    <div className='bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 text-white py-12 px-4'>
-    <div className="max-w-3xl bg-gradient-to-br   from-blue-600 via-purple-600 to-pink-500 rounded-2xl mx-auto px-4 py-12">
+    <div className='bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 w-full min-h-screen  text-white'>
+    <div className='max-w-3xl mx-auto px-6 py-12'>
+    <div className="max-w-3xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 rounded-2xl mx-auto px-8 py-20 mb-8">
+
       <h2 className="text-4xl font-bold text-center text-gray-100 mb-10">Frequently Asked Questions</h2>
-      <div className="space-y-4">
+      <div className="space-y-4 ">
         {faqs.map((faq, index) => (
           <div
             key={index}
@@ -77,6 +79,8 @@ const FAQ: React.FC = () => {
         ))}
       </div>
     </div>
+    </div>
+    <Footer />
     </div>
   );
 };

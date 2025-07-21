@@ -16,14 +16,14 @@ const Footer: React.FC = () => {
           {/* Logo and Social Media */}
           <div className="space-y-6">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-white rounded-sm flex items-center justify-center">
-                <span className="text-black font-bold text-sm">A</span>
+              <div className="w-20 h-20 bg-blue-700 rounded-sm flex items-center justify-center">
+                 <img src="/OPPZ_Ai_Logo.png" alt="Logo" className="w-14 h-14" />
               </div>
-              <span className="text-xl font-semibold">OPPZ Ai</span>
+              <span className="text-5xl font-semibold">OPPZ Ai</span>
             </div>
 
-            <div className="flex space-x-4">
-              {/* Replace # with real links */}
+            {/* <div className="flex space-x-4">
+               
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                 <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center">
                   <span className="text-white font-bold">𝕏</span>
@@ -49,9 +49,9 @@ const Footer: React.FC = () => {
                   <Facebook size={16} className="text-white" />
                 </div>
               </a>
-            </div>
+            </div> */}
 
-            <div className="text-gray-400 text-sm">
+            <div className="text-gray-400 text-xl">
               support@oppzai.com
             </div>
           </div>

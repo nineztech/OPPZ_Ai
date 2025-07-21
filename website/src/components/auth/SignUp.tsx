@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
  import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
-
+import Footer from '../Footer/Footer';
 
 interface SignUpFormData {
   firstname: string;
@@ -164,10 +164,11 @@ const SignUp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-gradient-to-br from-indigo-600 to-purple-800 p-8 rounded-lg shadow-md">
-        <div className="text-center">
-          <img className="mx-auto h-16 w-16" src="/OPPZ_Ai_Logo.png" alt="Logo" />
+    <div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+     <div className="max-w-md w-full space-y-8 bg-white/30 backdrop-blur-md p-8 rounded-lg shadow-md border border-white/20">
+     <div className="text-center">
+          <img className="mx-auto h-16 w-16 text-black" src="/OPPZ_Ai_Logo.png" alt="Logo" />
           <h1 className="text-3xl font-extrabold text-gray-100">OPPZ Ai</h1>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-100">Create Account</h2>
           <p className="mt-2 text-sm text-gray-100">
@@ -294,12 +295,18 @@ const SignUp: React.FC = () => {
               required
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
             />
-            <label htmlFor="terms" className="ml-2 block text-sm text-gray-100">
-              I agree to the{' '}
-              {/* <a href="/terms" className="text-indigo-200 hover:text-indigo-400">Terms of Service</a>{' '}
-              and{' '} */}
-              <a href="./PrivacyPolicy" className="text-indigo-200 hover:text-indigo-400">Privacy Policy</a>
-            </label>
+           <label htmlFor="terms" className="ml-2 block text-sm text-gray-100">
+  I agree to the{' '}
+  <a
+    href="./PrivacyPolicy"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-indigo-200 hover:text-indigo-400"
+  >
+    Privacy Policy
+  </a>
+</label>
+
           </div>
 
           {error && (
@@ -326,6 +333,8 @@ const SignUp: React.FC = () => {
           </Link>
         </div>
       </div>
+    </div>
+        <Footer />
     </div>
   );
 };

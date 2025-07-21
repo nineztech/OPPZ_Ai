@@ -23,7 +23,67 @@ interface ChatSession {
   hasSubmittedEmail: boolean;
 }
 
-// Simple in-memory storage (you can replace this with localStorage if needed)
+interface FAQ {
+  question: string;
+  answer: string;
+  keywords: string[];
+}
+
+// FAQ Database - Add your common questions here
+const FAQ_DATABASE: FAQ[] = [
+  {
+    question: "Hii",
+    answer: "Hii there! How can I assist you today?",
+    keywords: ["hi", "hello", "greetings","Whatsaap", "howdy"]
+  },
+   {
+    question: "Thank you",
+    answer: "You're welcome! If you have any more questions or need assistance, feel free to ask.",
+    keywords: ["thanks","Thanks", "thank you", "appreciate it", "grateful"]
+  },
+  {
+    question: "What is OPPZ AI?",
+    answer: "OPPZ AI is an advanced artificial intelligence platform designed to help businesses automate tasks, improve efficiency, and enhance customer experiences through smart technology solutions.",
+    keywords: ["what is oppz", "about oppz", "oppz ai", "what is oppz ai", "tell me about oppz"]
+  },
+  {
+    question: "How does OPPZ AI work?",
+    answer: "OPPZ AI uses machine learning algorithms and natural language processing to understand your needs and provide intelligent responses. It can be integrated into your existing systems to automate workflows and enhance productivity.",
+    keywords: ["how does oppz work", "how it works", "working", "functionality", "how does it work"]
+  },
+  {
+    question: "What are the pricing plans?",
+    answer: "We offer flexible pricing plans starting from $29/month for basic features, $79/month for professional features, and custom enterprise pricing. All plans include 24/7 support and regular updates.",
+    keywords: ["pricing", "cost", "price", "plans", "how much", "subscription", "fees"]
+  },
+  {
+    question: "How can I get started?",
+    answer: "Getting started is easy! Simply sign up for a free trial on our website, complete the onboarding process, and you'll be ready to use OPPZ AI in minutes. Our team is here to help you every step of the way.",
+    keywords: ["get started", "start", "begin", "how to start", "getting started", "setup"]
+  },
+  {
+    question: "Do you offer customer support?",
+    answer: "Yes! We provide 24/7 customer support through multiple channels including live chat, email, and phone. Our dedicated support team is always ready to help you with any questions or issues.",
+    keywords: ["support", "help", "customer service", "assistance", "contact support", "help desk"]
+  },
+  {
+    question: "Is my data secure?",
+    answer: "Absolutely! We take data security very seriously. All data is encrypted in transit and at rest, we comply with GDPR and other privacy regulations, and we never share your data with third parties.",
+    keywords: ["security", "data security", "safe", "privacy", "secure", "protection", "gdpr"]
+  },
+  {
+    question: "Can I integrate OPPZ AI with my existing tools?",
+    answer: "Yes! OPPZ AI offers seamless integration with popular tools like Slack, Microsoft Teams, Salesforce, HubSpot, and many others through our API and pre-built connectors.",
+    keywords: ["integration", "integrate", "api", "connect", "tools", "existing tools", "compatibility"]
+  },
+  {
+    question: "What industries do you serve?",
+    answer: "OPPZ AI serves various industries including healthcare, finance, e-commerce, education, real estate, and manufacturing. Our flexible platform can be customized for any industry's specific needs.",
+    keywords: ["industries", "sectors", "business types", "who do you serve", "target market"]
+  }
+];
+
+// Simple in-memory storage
 const chatStorage = {
   session: null as ChatSession | null
 };
@@ -41,6 +101,40 @@ function getChatSession(): ChatSession | null {
   return chatStorage.session;
 }
 
+// Function to find matching FAQ
+function findMatchingFAQ(userMessage: string): FAQ | null {
+  const normalizedMessage = userMessage.toLowerCase();
+  
+  // Find exact or close matches
+  for (const faq of FAQ_DATABASE) {
+    for (const keyword of faq.keywords) {
+      if (normalizedMessage.includes(keyword.toLowerCase())) {
+        return faq;
+      }
+    }
+  }
+  
+  // If no direct match, check for partial matches
+  for (const faq of FAQ_DATABASE) {
+    const questionWords = faq.question.toLowerCase().split(' ');
+    const messageWords = normalizedMessage.split(' ');
+    
+    let matchCount = 0;
+    for (const word of questionWords) {
+      if (messageWords.some(msgWord => msgWord.includes(word) || word.includes(msgWord))) {
+        matchCount++;
+      }
+    }
+    
+    // If more than 30% of words match, consider it a match
+    if (matchCount / questionWords.length > 0.3) {
+      return faq;
+    }
+  }
+  
+  return null;
+}
+
 export const Contect: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -56,7 +150,6 @@ export const Contect: React.FC = () => {
   
   // Persistent chat session state
   const [chatSession, setChatSession] = useState<ChatSession>(() => {
-    // Try to load existing session from memory or create new one
     const savedSession = getChatSession();
     return savedSession || {
       messages: [],
@@ -92,7 +185,6 @@ export const Contect: React.FC = () => {
     if (!isOpen) {
       setIsOpen(true);
       setIsMinimized(false);
-      // Load existing session
       const savedSession = getChatSession();
       if (savedSession) {
         setChatSession(savedSession);
@@ -126,39 +218,65 @@ export const Contect: React.FC = () => {
       messages: [...prev.messages, newMessage]
     }));
 
+    const userMessageText = inputMessage;
     setInputMessage('');
     setIsTyping(true);
 
-    // Show notification popup after user sends first message (only if email not submitted)
-    if (chatSession.isFirstMessage && !chatSession.hasSubmittedEmail) {
-      setShowNotification(true);
-      setChatSession(prev => ({
-        ...prev,
-        isFirstMessage: false
-      }));
-    }
-
-    // Simulate backend response
-    setTimeout(() => {
-      const botResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        text: chatSession.hasSubmittedEmail 
-          ? `Thanks for your message: "${newMessage.text}". How can I help you today?`
-          : `Thanks for your message: "${newMessage.text}". Please provide your email so we can assist you better.`,
-        sender: 'bot',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      
-      setChatSession(prev => ({
-        ...prev,
-        messages: [...prev.messages, botResponse]
-      }));
-      
-      setIsTyping(false);
-      if (!isOpen) {
-        setHasUnreadMessages(true);
+    // Check if the message matches any FAQ
+    const matchingFAQ = findMatchingFAQ(userMessageText);
+    
+    if (matchingFAQ) {
+      // Respond with FAQ answer
+      setTimeout(() => {
+        const botResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          text: matchingFAQ.answer,
+          sender: 'bot',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        setChatSession(prev => ({
+          ...prev,
+          messages: [...prev.messages, botResponse]
+        }));
+        
+        setIsTyping(false);
+        if (!isOpen) {
+          setHasUnreadMessages(true);
+        }
+      }, 1000);
+    } else {
+      // Question not in FAQ - show email form if first message or email not submitted
+      if (chatSession.isFirstMessage && !chatSession.hasSubmittedEmail) {
+        setShowNotification(true);
+        setChatSession(prev => ({
+          ...prev,
+          isFirstMessage: false
+        }));
       }
-    }, 1500);
+
+      // Simulate backend response for non-FAQ questions
+      setTimeout(() => {
+        const botResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          text: chatSession.hasSubmittedEmail 
+            ? `I understand you're asking about "${userMessageText}". Our team will review your query and get back to you within 24 hours. Is there anything else I can help you with from our common questions?`
+            : `Thank you for your question about "${userMessageText}". This seems like a specific inquiry that our team should handle personally. Please provide your email so we can give you a detailed response within 24 hours.`,
+          sender: 'bot',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        setChatSession(prev => ({
+          ...prev,
+          messages: [...prev.messages, botResponse]
+        }));
+        
+        setIsTyping(false);
+        if (!isOpen) {
+          setHasUnreadMessages(true);
+        }
+      }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -186,23 +304,12 @@ export const Contect: React.FC = () => {
 
     console.log('Contact submitted:', contactData);
     
-    // You can add actual API call here
-    // try {
-    //   await fetch('/api/contacts', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify(contactData)
-    //   });
-    // } catch (error) {
-    //   console.error('Failed to submit contact:', error);
-    // }
-
     setShowNotification(false);
     
     // Add a confirmation message
     const confirmationMessage: Message = {
       id: (Date.now() + 2).toString(),
-      text: "Thank you! We've received your contact information and will get back to you within 24 hours.",
+      text: "Thank you! We've received your contact information and will get back to you within 24 hours. In the meantime, feel free to ask me about our services, pricing, or any other common questions!",
       sender: 'bot',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
@@ -220,21 +327,7 @@ export const Contect: React.FC = () => {
   const handleCloseChat = () => {
     setIsOpen(false);
     setIsMinimized(false);
-    // Don't reset the session - it will persist
   };
-
-  // Function to clear chat session (you can add a button for this if needed)
-  // const clearChatSession = () => {
-  //   const newSession: ChatSession = {
-  //     messages: [],
-  //     userEmail: '',
-  //     sessionId: generateSessionId(),
-  //     isFirstMessage: true,
-  //     hasSubmittedEmail: false
-  //   };
-  //   setChatSession(newSession);
-  //   saveChatSession(newSession);
-  // };
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
@@ -265,12 +358,10 @@ export const Contect: React.FC = () => {
           <div className="bg-black text-white p-4 flex items-center justify-between rounded-t-2xl">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                <div className="w-6 h-6 bg-transparent rounded-sm flex items-center justify-center">
-                  <img src="/OPPZ_Ai_Logo.png" alt="OPPZ Ai Logo" className="w-full h-full object-contain" />
-                </div>
+                    <img src="/OPPZ_Ai_Logo.png" alt="Logo" className="w-8 h-8" />
               </div>
               <div>
-                <span className="font-semibold">OPPZ Ai</span>
+                <span className="font-semibold">OPPZ AI</span>
                 {chatSession.hasSubmittedEmail && (
                   <div className="text-xs text-gray-400">
                     Session: {chatSession.sessionId.slice(-6)}
@@ -300,10 +391,11 @@ export const Contect: React.FC = () => {
               {/* Chat Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 h-96">
                 {chatSession.messages.length === 0 && (
-                  <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500 space-y-4">
                     <p className="text-center">
-                      👋 Hello! Send a message to start the conversation.
+                      👋 Hello! I'm OPPZ AI assistant. Ask me anything!
                     </p>
+                      
                   </div>
                 )}
                 
@@ -351,7 +443,7 @@ export const Contect: React.FC = () => {
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="Write your message..."
+                      placeholder="Ask me anything..."
                       className="w-full p-3 pr-20 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
@@ -416,15 +508,6 @@ export const Contect: React.FC = () => {
                 Submit
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* User Avatar - Only show when chat is open and not minimized */}
-      {isOpen && !isMinimized && (
-        <div className="absolute bottom-6 left-6">
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center p-2 text-white font-bold">
-            <img src="/OPPZ_Ai_Logo.png" alt="User Avatar" className="w-full h-full rounded-full object-cover" />
           </div>
         </div>
       )}

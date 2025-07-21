@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext'; // Import from AuthContext
- 
+import Footer from '../Footer/Footer'; 
 
 interface LoginFormData {
   email: string;
@@ -79,8 +79,10 @@ localStorage.setItem('userEmail', data.user.email);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-gradient-to-br from-indigo-600 to-purple-800 p-8 rounded-lg shadow-md">
+    <div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white/30 backdrop-blur-md p-8 rounded-lg shadow-md border border-white/20">
+
         <div className="text-center">
           <img className="mx-auto h-16 w-16" src="/OPPZ_Ai_Logo.png" alt="Logo" />
           <h1 className="text-3xl font-extrabold text-gray-100">
@@ -148,7 +150,10 @@ localStorage.setItem('userEmail', data.user.email);
           </Link>
         </div>
       </div>
+     
     </div>
+      <Footer />
+      </div>
   );
 };
 

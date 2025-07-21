@@ -351,6 +351,8 @@ useEffect(() => {
                       </div>
                       <a
                         href={`${config.apiBaseUrl}/uploads/${selectedProfile.resume}`}
+                        rel="noopener noreferrer"
+                         target="_blank"
                         download
                         className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                       >
