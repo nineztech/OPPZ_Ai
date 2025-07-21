@@ -11,5 +11,7 @@ router.post('/register', register);
 // @desc    Login user
 // @access  Public
 router.post('/login', login);
+// router.get('/basic-info/:email', getBasicUserInfo);
+
 
 export default router;

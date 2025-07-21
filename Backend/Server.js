@@ -26,7 +26,7 @@ if (!fs.existsSync(uploadsDir)) {
 // Enable CORS - Fixed configuration
 app.use(cors({
   origin: [
-    'chrome-extension://*',
+    'chrome-extension://edejolphacgbhddjeoomiadkgfaocjcj',
     'moz-extension://*',
     process.env.USER_URL,
   ],
