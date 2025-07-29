@@ -168,7 +168,7 @@ const Home: React.FC = () => {
         />
       </div>
     </div> */}
-    <div className="w-full md:w-[550px]">
+    <div className="w-full md:w-[500px]">
   <div className="h-[350px] -mr-36   p-0  -mt-20 overflow-hidden">
     <img
       src="/ai-4 (2).png"
