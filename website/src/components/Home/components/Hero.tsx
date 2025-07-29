@@ -171,7 +171,7 @@ const Home: React.FC = () => {
     <div className="w-full md:w-[550px]">
   <div className="h-[350px] -mr-36   p-0  -mt-20 overflow-hidden">
     <img
-      src="/ai-4.png"
+      src="/ai-4 (2).png"
       alt="OPPZ Ai Logo"
       className="h-full w-full object-contain"
     />
