@@ -130,12 +130,12 @@ const Login: React.FC = () => {
        <div className="min-h-screen/2 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 text-white flex items-center justify-center px-4 py-4">
   <div className="flex flex-col md:flex-row items-center md:items-start p-4 gap-10 max-w-7xl w-full">
         {/* Animated background elements */}
-        <div className="absolute inset-0">
+        {/* <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full animate-pulse"></div>
           <div className="absolute top-1/3 right-20 w-32 h-32 bg-white/5 rounded-full animate-bounce"></div>
           <div className="absolute bottom-20 left-1/4 w-16 h-16 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-radial from-white/5 to-transparent rounded-full"></div>
-        </div>
+        </div> */}
 
         <div className="relative z-10 flex items-center w-full justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
           <div className="bg-white/10 backdrop-blur-xl w-full rounded-3xl p-8 shadow-2xl border border-white/20">

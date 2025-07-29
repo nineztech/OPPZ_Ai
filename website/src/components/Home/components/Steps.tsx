@@ -35,7 +35,6 @@ const steps: Step[] = [
     color: "text-orange-600",
     bgGradient: "from-orange-500 to-red-500",
     images: [
-      "/Step2.png",
       "/Step2_1.png",
       "/Step2_2.png"
     ],
@@ -191,8 +190,8 @@ const FeaturesStepsProcess: React.FC = () => {
       </div>
 
       {/* Steps Grid */}
-      <div className="max-w-7xl mx-auto px-4 pb-16">
-        <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6">
+      <div className="max-w-7xl mx-auto px-4 pb-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {steps.map((step) => (
             <div
               key={step.id}

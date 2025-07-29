@@ -5,7 +5,7 @@ const PrivacyPolicy: React.FC = () => {
     <div className="bg-slate-50 text-slate-800 min-h-screen">
       <header className="bg-slate-900 text-white py-8 text-center">
         <h1 className="text-3xl font-bold">Privacy Policy for OPPZ AI Auto Apply</h1>
-        <p className="mt-2 font-medium">Last Updated: [Insert Date]</p>
+        <p className="mt-2 font-medium">Last Updated: [14-7-2025]</p>
       </header>
 
       <main className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-xl mt-10">
@@ -113,11 +113,10 @@ const PrivacyPolicy: React.FC = () => {
         </Section>
 
         <Section title="Contact Information">
-          <p><strong>Email:</strong> [your-email@domain.com]</p>
-          <p><strong>Website:</strong> [your-website.com]</p>
-          <p><strong>Address:</strong> [Your Business Address]</p>
+          <p><strong>Email:</strong> [support@oppzai.com]</p>
+           
           <h3 className="mt-4 font-semibold text-lg">Data Protection Officer (DPO)</h3>
-          <p><strong>Email:</strong> [dpo@domain.com]</p>
+          <p><strong>Email:</strong> [support@oppzai.com]</p>
         </Section>
 
         <Section title="Your Rights Summary">

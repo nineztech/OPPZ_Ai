@@ -174,12 +174,12 @@ const SignUp: React.FC = () => {
 
 
 {/* Animated background elements */}
-        <div className="absolute inset-0">
+        {/* <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full animate-pulse"></div>
           <div className="absolute top-1/3 right-20 w-32 h-32 bg-white/5 rounded-full animate-bounce"></div>
           <div className="absolute bottom-20 left-1/4 w-16 h-16 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-radial from-white/5 to-transparent rounded-full"></div>
-        </div>
+        </div> */}
 
         <div className="relative z-10 flex w-full justify-start min-h-screen py-12 px-4 sm:px-6 lg:px-8">
   <div className="backdrop-blur-xl w-full max-w-3xl rounded-3xl p-8 text-left">
@@ -229,7 +229,7 @@ const SignUp: React.FC = () => {
 
         <div className="flex items-start space-x-4">
           <div className="w-8 h-8 bg-blue-400/20 rounded-full flex items-center justify-center mt-1">
-            <CheckCircle className="w-4 h-4 text-blue-400" />
+            <CheckCircle className="w-4 h-4 text-green-400" />
           </div>
           <div>
             <h3 className="text-white font-semibold">Automated Applications</h3>
@@ -239,7 +239,7 @@ const SignUp: React.FC = () => {
 
         <div className="flex items-start space-x-4">
           <div className="w-8 h-8 bg-purple-400/20 rounded-full flex items-center justify-center mt-1">
-            <CheckCircle className="w-4 h-4 text-purple-400" />
+            <CheckCircle className="w-4 h-4 text-green-400" />
           </div>
           <div>
             <h3 className="text-white font-semibold">Real-time Analytics</h3>
@@ -274,6 +274,7 @@ const SignUp: React.FC = () => {
                   name="firstname"
                   value={formData.firstname}
                   onChange={handleChange}
+                   placeholder="Enter your Firstname"
                   className={`w-full pl-10 pr-4 py-3 bg-white/10 border  rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200`}
                   required
                 />
@@ -289,7 +290,8 @@ const SignUp: React.FC = () => {
                   name="lastname"
                   value={formData.lastname}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border  rounded-xl text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200"
+                  placeholder="Enter your Lastname"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border  rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200"
                   required
                 />
               </div>
@@ -303,12 +305,14 @@ const SignUp: React.FC = () => {
                 <PhoneInput
   country={'us'} // or 'in' for default India
   value={formData.Phone}
+  placeholder="Enter your Phonenember"
   onChange={(phone) =>
     setFormData((prev) => ({ ...prev, Phone: phone }))
   }
   inputProps={{
     name: 'Phone',
     required: true,
+    
     autoFocus: false,
   }}
   inputStyle={{
@@ -351,6 +355,7 @@ const SignUp: React.FC = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange} 
+                   placeholder="Enter your email"
                   className={`w-full pl-10 pr-4 py-3 bg-white/10 border   rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200`}
                   required
                 />
@@ -370,6 +375,7 @@ const SignUp: React.FC = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                   placeholder="Enter Password"
                   className={`w-full pl-10 pr-4 py-3 bg-white/10 border   rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200`}
                   required
                 />
@@ -392,6 +398,7 @@ const SignUp: React.FC = () => {
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                   placeholder="Enter ConfirmPassword"
                  className={`w-full pl-10 pr-4 py-3 bg-white/10 border   rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200`}
                   required
                 />
