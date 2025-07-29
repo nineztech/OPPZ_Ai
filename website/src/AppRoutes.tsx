@@ -14,6 +14,7 @@ import MainPage from './components/Quotations/MainPage';
 import TermsAndConditions  from './components/auth/Terms_COndition';
 import Layout from './Layout';
 import ProtectedRoute from './ProtectedRoute';
+import ContectPage from './components/Contact_tutorial/Contect';
 import LoadingSpinner from './components/LoadingSpinner/LoadingSpinner';
 import RefundPolicy from './components/auth/RefundPolicy';
 import FAQ from './components/Home/components/FAQ';
@@ -40,6 +41,7 @@ const AppRoutes = () => {
       <Route path="/UserProfile" element={<ProtectedRoute><Layout><UserProfile /></Layout></ProtectedRoute>} />
       <Route path="/AppliedJob" element={<ProtectedRoute><Layout><AppliedJob /></Layout></ProtectedRoute>} />
       <Route path="/MainPage" element={<ProtectedRoute><Layout><MainPage /></Layout></ProtectedRoute>} />
+      <Route path="/Contact" element={<ProtectedRoute><Layout><ContectPage /></Layout></ProtectedRoute>} />
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Layout>

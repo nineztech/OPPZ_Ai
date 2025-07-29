@@ -34,6 +34,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <Link to="/" className="text-gray-100 hover:text-blue-100 hover:border-b-2 border-white">Home</Link>
       {/* <Link to="/features" className="text-gray-100 hover:text-blue-100 hover:border-b-2 border-white">Features</Link> */}
       <Link to="/FAQ" className="text-gray-100 hover:text-blue-100 hover:border-b-2 border-white">FAQ</Link>
+      <Link to="/Pricing" className="text-gray-100 hover:text-blue-100 hover:border-b-2 border-white">Pricing</Link>
       <Link to="/login" className="text-gray-100 hover:text-blue-100 hover:border-b-2 border-white">Login</Link>
       <Link to="/signup" className="text-gray-100 hover:text-blue-100 hover:border-b-2 border-white">Signup</Link>
     </div>

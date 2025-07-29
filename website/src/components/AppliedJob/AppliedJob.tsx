@@ -24,6 +24,7 @@ interface Job {
   link?: string;
   time?: number;
   isAutoApplied: boolean;
+  location:String;
 }
 
 interface JobStats {
@@ -35,12 +36,19 @@ interface JobStats {
   thisMonth: number;
 }
 
+ 
+
 const extensionId = 'edejolphacgbhddjeoomiadkgfaocjcj';
 
 const JobApplicationHistory: React.FC = () => {
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const today = new Date().toISOString().slice(0, 10); // Format: "YYYY-MM-DD"
+ 
+
+const jobsPerPage = 10;
+
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -55,6 +63,14 @@ const JobApplicationHistory: React.FC = () => {
     thisMonth: 'This Month',
     max: 'Max',
   };
+
+
+const todayCount = allJobs.filter((job) => {
+  if (!job.time) return false;
+  const appliedDate = new Date(job.time).toISOString().slice(0, 10);
+  return appliedDate === today;
+}).length;
+
 
   const buildChartData = useCallback((jobs: Job[]) => {
     const today = dayjs();
@@ -244,6 +260,7 @@ const JobApplicationHistory: React.FC = () => {
 
       jobs.forEach((job: any, idx: number) => {
         const id = job.id || job.jobId || '-';
+        const location =job.location || job.Location||'-';
         const company = job.company || job.companyName || '-';
         const date = job.appliedDate
           ? new Date(job.appliedDate).toLocaleString()
@@ -257,6 +274,8 @@ const JobApplicationHistory: React.FC = () => {
         doc.text(`ID: ${id}`, 10, y);
         y += 6;
         doc.text(`Company: ${company}`, 10, y);
+        y += 6;
+        doc.text(`Location: ${location}`, 10, y);
         y += 6;
         doc.text(`Applied: ${date}`, 10, y);
         y += 6;
@@ -283,6 +302,12 @@ const JobApplicationHistory: React.FC = () => {
     if (!time) return 'Unknown';
     return new Date(time).toLocaleString();
   };
+
+  useEffect(() => {
+  updateFilter();
+  setCurrentPage(1); // reset page on filter change
+}, [search, allJobs, updateFilter]);
+
 
   useEffect(() => {
     loadJobData();
@@ -358,12 +383,13 @@ const StatCard = ({
 
 <StatCard
   label="Today Applied"
-  count={stats.auto}
-  icon={<Bot className="w-10 h-10 animate-bounce" />} // animate icon for visual distinction
+  count={todayCount}
+  icon={<Bot className="w-10 h-10 animate-bounce" />}
   color="text-green-600"
-  description={`Handled by OPPZ Bot. That's ${Math.round((stats.auto / stats.total) * 100)}% of all.`}
-  percentage={Math.round((stats.auto / stats.total) * 100)}
+  description={`Handled by OPPZ Bot. That's ${Math.round((todayCount / stats.total) * 100)}% of all.`}
+  percentage={Math.round((todayCount / stats.total) * 100)}
 />
+
 
 
         <div className="px-6 py-4 w-[205%]">
@@ -439,49 +465,84 @@ const StatCard = ({
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredJobs.map((job) => (
+             {filteredJobs
+  .slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage)
+  .map((job) => (
+
                 <div
-                  key={job.id}
-                  className={`p-4 rounded-xl border-l-4 shadow transition transform hover:-translate-y-1 bg-gray-50 ${
-                    job.isAutoApplied ? 'border-cyan-500' : 'border-green-500'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800">{job.title || 'Untitled'}</h2>
-                      <p className="text-sm text-gray-600">{job.companyName || 'Unknown Company'}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      {job.link && (
-                        <a
-                          href={job.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="bg-indigo-500 text-white px-3 py-1 rounded text-sm hover:bg-indigo-600"
-                        >
-                          <ExternalLink className="inline w-4 h-4 mr-1" /> View
-                        </a>
-                      )}
-                      <button
-                        onClick={() => deleteJob(job.id, job.isAutoApplied)}
-                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
-                      >
-                        <Trash2 className="inline w-4 h-4 mr-1" /> Delete
-                      </button>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-600 flex gap-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      job.isAutoApplied ? 'bg-cyan-100 text-cyan-700' : 'bg-green-100 text-green-700'
-                    }`}>
-                      {job.isAutoApplied ? 'Auto Applied' : 'External Application'}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" /> {formatDate(job.time)}
-                    </span>
-                  </div>
-                </div>
+  key={job.id}
+  className={`p-4 rounded-xl border-l-4 shadow transition transform hover:-translate-y-1 bg-gray-50 ${
+    job.isAutoApplied ? 'border-cyan-500' : 'border-green-500'
+  }`}
+>
+  {/* Row 1: Title + Badge (left), Buttons (right) */}
+  <div className="flex justify-between items-center mb-3">
+    <div className="flex items-center gap-3">
+      <h2 className="text-lg font-semibold text-gray-800">
+        Position: {job.title || 'Untitled'}
+      </h2>
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-bold ${
+          job.isAutoApplied ? 'bg-cyan-100 text-cyan-700' : 'bg-green-100 text-green-700'
+        }`}
+      >
+        {job.isAutoApplied ? 'Auto Applied' : 'External Application'}
+      </span>
+    </div>
+
+    <div className="flex gap-2">
+      {job.link && (
+        <a
+          href={job.link}
+          target="_blank"
+          rel="noreferrer"
+          className="bg-indigo-500 text-white px-3 py-1 rounded text-sm hover:bg-indigo-600"
+        >
+          <ExternalLink className="inline w-4 h-4 mr-1" /> View
+        </a>
+      )}
+      <button
+        onClick={() => deleteJob(job.id, job.isAutoApplied)}
+        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+      >
+        <Trash2 className="inline w-4 h-4 mr-1" /> Delete
+      </button>
+    </div>
+  </div>
+
+  {/* Row 2: Company + Location (left), Time (right) */}
+  <div className="flex justify-between items-center text-sm text-gray-600">
+    <div>
+      Company: {job.companyName || 'Unknown Company'}  
+      {/* •{' '}Location: {job.location || 'Unknown Location'} */}
+    </div>
+    <div className="flex items-center gap-1">
+      <Clock className="w-4 h-4" />
+      {formatDate(job.time)}
+    </div>
+  </div>
+</div>
+
+
               ))}
+              {filteredJobs.length > jobsPerPage && (
+  <div className="flex justify-center gap-2 mt-6">
+    {Array.from({ length: Math.ceil(filteredJobs.length / jobsPerPage) }).map((_, index) => (
+      <button
+        key={index}
+        onClick={() => setCurrentPage(index + 1)}
+        className={`px-3 h-12 w-12 py-1 rounded-md border text-sm font-medium ${
+          currentPage === index + 1
+            ? 'bg-indigo-600 text-white'
+            : 'bg-white text-gray-700 hover:bg-indigo-100'
+        }`}
+      >
+        {index + 1}
+      </button>
+    ))}
+  </div>
+)}
+
             </div>
           )}
         </div>

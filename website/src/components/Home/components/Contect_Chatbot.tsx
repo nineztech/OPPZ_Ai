@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Smile, Paperclip, MessageCircle, Minimize2 } from 'lucide-react';
+import { distance } from 'fastest-levenshtein';
 
 interface Message {
   id: string;
@@ -43,45 +44,131 @@ const FAQ_DATABASE: FAQ[] = [
   },
   {
     question: "What is OPPZ AI?",
-    answer: "OPPZ AI is an advanced artificial intelligence platform designed to help businesses automate tasks, improve efficiency, and enhance customer experiences through smart technology solutions.",
-    keywords: ["what is oppz", "about oppz", "oppz ai", "what is oppz ai", "tell me about oppz"]
+    answer: "OPPZ AI helps automate your job search using AI-powered resume matching, application submission, and tracking — all from one dashboard.",
+    keywords: ["oppz ai", "what is oppz", "oppz", "platform", "ai tool"]
   },
   {
-    question: "How does OPPZ AI work?",
-    answer: "OPPZ AI uses machine learning algorithms and natural language processing to understand your needs and provide intelligent responses. It can be integrated into your existing systems to automate workflows and enhance productivity.",
-    keywords: ["how does oppz work", "how it works", "working", "functionality", "how does it work"]
+    question: "How do I install the Chrome Extension?",
+    answer: "Go to the Chrome Web Store, search for 'OPPZ AI', and click 'Add to Chrome'. Once installed, pin it to your toolbar for easy access.",
+    keywords: ["install extension", "chrome extension", "how to install", "browser plugin"]
   },
   {
-    question: "What are the pricing plans?",
-    answer: "We offer flexible pricing plans starting from $29/month for basic features, $79/month for professional features, and custom enterprise pricing. All plans include 24/7 support and regular updates.",
-    keywords: ["pricing", "cost", "price", "plans", "how much", "subscription", "fees"]
+    question: "Can I use OPPZ AI without the extension?",
+    answer: "The Chrome Extension is required for auto-applying and job scraping features. The dashboard works without it, but with limited functionality.",
+    keywords: ["without extension", "no plugin", "extension required", "without chrome"]
   },
   {
-    question: "How can I get started?",
-    answer: "Getting started is easy! Simply sign up for a free trial on our website, complete the onboarding process, and you'll be ready to use OPPZ AI in minutes. Our team is here to help you every step of the way.",
-    keywords: ["get started", "start", "begin", "how to start", "getting started", "setup"]
+    question: "Does OPPZ AI apply for jobs automatically?",
+    answer: "Yes! Once set up, OPPZ AI automatically applies to jobs that match your profile using your saved templates and preferences.",
+    keywords: ["auto apply", "automatically", "auto-apply", "apply for me"]
   },
   {
-    question: "Do you offer customer support?",
-    answer: "Yes! We provide 24/7 customer support through multiple channels including live chat, email, and phone. Our dedicated support team is always ready to help you with any questions or issues.",
-    keywords: ["support", "help", "customer service", "assistance", "contact support", "help desk"]
+    question: "How do I update my resume?",
+    answer: "Visit your dashboard, go to 'Profile Builder', and upload your latest resume. OPPZ AI will use it for all future applications.",
+    keywords: ["upload resume", "update cv", "resume update", "new resume"]
   },
   {
-    question: "Is my data secure?",
-    answer: "Absolutely! We take data security very seriously. All data is encrypted in transit and at rest, we comply with GDPR and other privacy regulations, and we never share your data with third parties.",
-    keywords: ["security", "data security", "safe", "privacy", "secure", "protection", "gdpr"]
+    question: "Can I customize my job filters?",
+    answer: "Yes. Use the filter settings on your dashboard or extension to exclude certain job types, companies, or roles.",
+    keywords: ["filters", "job filters", "custom filters", "skip"]
   },
   {
-    question: "Can I integrate OPPZ AI with my existing tools?",
-    answer: "Yes! OPPZ AI offers seamless integration with popular tools like Slack, Microsoft Teams, Salesforce, HubSpot, and many others through our API and pre-built connectors.",
-    keywords: ["integration", "integrate", "api", "connect", "tools", "existing tools", "compatibility"]
+    question: "Where can I track my job applications?",
+    answer: "In the 'Application Tracker' section of the dashboard, you can see every job OPPZ AI has applied for — including status and date.",
+    keywords: ["track", "status", "job history", "application tracking"]
   },
   {
-    question: "What industries do you serve?",
-    answer: "OPPZ AI serves various industries including healthcare, finance, e-commerce, education, real estate, and manufacturing. Our flexible platform can be customized for any industry's specific needs.",
-    keywords: ["industries", "sectors", "business types", "who do you serve", "target market"]
+    question: "Is there a mobile app for OPPZ AI?",
+    answer: "Not yet, but we're working on it! For now, use the web dashboard and Chrome Extension.",
+    keywords: ["mobile", "app", "android", "iphone"]
+  },
+  {
+    question: "What if the job form is different?",
+    answer: "Our AI handles most standard forms. If a job form is unusual, you can report it via the extension so we can add support.",
+    keywords: ["form issue", "broken form", "error", "different form"]
+  },
+  {
+    question: "How do I pause auto-apply?",
+    answer: "Click the toggle in your extension or dashboard to pause the auto-apply feature anytime.",
+    keywords: ["pause", "stop applying", "turn off", "disable"]
+  },
+  {
+    question: "Is there a free plan?",
+    answer: "Yes! Our free plan allows limited job tracking and profile setup. Upgrade for full auto-apply features.",
+    keywords: ["free", "pricing", "free version", "trial"]
+  },
+  {
+    question: "How many jobs can OPPZ AI apply to per day?",
+    answer: "Depending on your plan, OPPZ AI can apply to 20–200 jobs daily. You control the limit in settings.",
+    keywords: ["apply limit", "daily jobs", "how many", "quota"]
+  },
+  {
+    question: "Can I see what jobs were skipped?",
+    answer: "Yes, the dashboard shows skipped jobs along with the reason — such as filter matches or duplicates.",
+    keywords: ["skipped", "ignored", "not applied", "why skipped"]
+  },
+  {
+    question: "Does it work with LinkedIn Premium?",
+    answer: "Yes, OPPZ AI supports all LinkedIn versions including Premium.",
+    keywords: ["linkedin", "premium", "linkedin job"]
+  },
+  {
+    question: "How do I contact support?",
+    answer: "You can chat with us here, or email support@oppz.ai anytime. We respond within 24 hours.",
+    keywords: ["contact", "email", "support", "help team"]
+  },
+  {
+    question: "What is Profile Completion?",
+    answer: "Profile Completion shows how much of your profile is filled out. 100% helps OPPZ AI better match jobs.",
+    keywords: ["profile", "completion", "setup", "complete profile"]
+  },
+  {
+    question: "Can I export my application history?",
+    answer: "Yes. Go to 'Application Tracker' and click 'Export CSV' to download your data.",
+    keywords: ["export", "csv", "download", "history"]
+  },
+  {
+    question: "Is OPPZ AI safe to use?",
+    answer: "Absolutely. We use encryption and follow data privacy best practices. Your info is never sold or shared.",
+    keywords: ["safe", "secure", "private", "data safety"]
+  },
+  {
+    question: "What job platforms does it support?",
+    answer: "Currently, OPPZ AI supports LinkedIn, Indeed, Monster, Glassdoor, and more being added weekly.",
+    keywords: ["supported platforms", "which sites", "job board", "indeed"]
+  },
+  {
+    question: "Can I save custom answers for applications?",
+    answer: "Yes! Use the 'Question Library' to save pre-written answers to common job application questions.",
+    keywords: ["saved answers", "reusable", "question library", "templates"]
+  },
+  {
+    question: "How often does the extension update?",
+    answer: "We roll out updates weekly to support more job platforms, fix bugs, and improve matching.",
+    keywords: ["update", "extension update", "new version"]
+  },
+  {
+    question: "Can I refer a friend?",
+    answer: "Yes! Share your referral link and earn discounts when your friends sign up.",
+    keywords: ["refer", "referral", "invite friends"]
+  },
+  {
+    question: "Where can I change my email or password?",
+    answer: "Go to 'Account Settings' in the dashboard to update your email, password, or subscription details.",
+    keywords: ["change email", "change password", "account settings"]
+  },
+  {
+    question: "What does auto-apply mean?",
+    answer: "Auto-apply means OPPZ AI fills and submits job applications on your behalf using your saved info.",
+    keywords: ["auto apply", "automatic apply", "one-click apply"]
+  },
+  {
+    question: "What makes OPPZ AI different from other job platforms?",
+    answer: "Unlike traditional job boards, OPPZ AI actively applies for you, saves time, and learns your preferences to improve match quality over time.",
+    keywords: ["why oppz", "oppz vs", "better", "difference"]
   }
 ];
+
 
 // Simple in-memory storage
 const chatStorage = {
@@ -104,8 +191,8 @@ function getChatSession(): ChatSession | null {
 // Function to find matching FAQ
 function findMatchingFAQ(userMessage: string): FAQ | null {
   const normalizedMessage = userMessage.toLowerCase();
-  
-  // Find exact or close matches
+
+  // Try keyword match first
   for (const faq of FAQ_DATABASE) {
     for (const keyword of faq.keywords) {
       if (normalizedMessage.includes(keyword.toLowerCase())) {
@@ -113,27 +200,24 @@ function findMatchingFAQ(userMessage: string): FAQ | null {
       }
     }
   }
-  
-  // If no direct match, check for partial matches
+
+  // If no direct keyword match, apply fuzzy logic
+  let bestMatch: FAQ | null = null;
+  let lowestDistance = Infinity;
+
   for (const faq of FAQ_DATABASE) {
-    const questionWords = faq.question.toLowerCase().split(' ');
-    const messageWords = normalizedMessage.split(' ');
-    
-    let matchCount = 0;
-    for (const word of questionWords) {
-      if (messageWords.some(msgWord => msgWord.includes(word) || word.includes(msgWord))) {
-        matchCount++;
-      }
-    }
-    
-    // If more than 30% of words match, consider it a match
-    if (matchCount / questionWords.length > 0.3) {
-      return faq;
+    const question = faq.question.toLowerCase();
+    const d = distance(normalizedMessage, question);
+
+    if (d < lowestDistance && d <= 10) { // Accept if distance is reasonable
+      bestMatch = faq;
+      lowestDistance = d;
     }
   }
-  
-  return null;
+
+  return bestMatch;
 }
+ 
 
 export const Contect: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -352,7 +436,7 @@ export const Contect: React.FC = () => {
       {/* Chat Interface */}
       {isOpen && (
         <div className={`bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
-          isMinimized ? 'w-80 h-16' : 'w-96 h-[600px]'
+          isMinimized ? 'w-80 h-16' : 'w-96 mb-8 h-[500px]'
         }`}>
           {/* Header */}
           <div className="bg-black text-white p-4 flex items-center justify-between rounded-t-2xl">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Trash2 } from 'lucide-react';
 
-const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim'; // Replace with your real one
+const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj'; // Replace with your real one
 
 type FilterKey = 'badWords' | 'titleFilterWords' | 'titleSkipWords';
 
@@ -12,7 +12,7 @@ interface FilterConfig {
 }
 
 const FILTERS: FilterConfig[] = [
-  { key: 'badWords', label: 'Blocked Keywords (Bad Words)', toggleKey: 'badWordsEnabled' },
+  { key: 'badWords', label: 'Blocked Keywords (Company/Industry)', toggleKey: 'badWordsEnabled' },
   { key: 'titleFilterWords', label: 'Job Title Must Contain', toggleKey: 'titleFilterEnabled' },
   { key: 'titleSkipWords', label: 'Job Title Must Skip', toggleKey: 'titleSkipEnabled' },
 ];
@@ -33,46 +33,100 @@ const FilterSettingsConfigs: React.FC = () => {
   const [editWords, setEditWords] = useState<Record<string, string>>({});
   const [newWord, setNewWord] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<FilterKey>('badWords');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const isExtension = () =>
     typeof chrome !== 'undefined' &&
     chrome.runtime &&
     typeof chrome.runtime.sendMessage === 'function';
 
-  // ✅ Memoized fetchData to fix dependency warning
+  // ✅ Enhanced fetchData with better error handling and logging
   const fetchData = useCallback(() => {
-    if (!isExtension()) return;
+    if (!isExtension()) {
+      setError('Chrome extension API not available');
+      setIsLoading(false);
+      return;
+    }
 
-    chrome.runtime.sendMessage(
-      EXTENSION_ID,
-      { from: 'website', action: 'getFilterSettings' },
-      (res) => {
-        if (res?.success) {
-          const updated: any = {};
-          FILTERS.forEach((f) => {
-            updated[f.key] = res[f.key] || [];
-          });
-          setFilters(updated);
-          setToggles({
-            badWordsEnabled: res.badWordsEnabled,
-            titleFilterEnabled: res.titleFilterEnabled,
-            titleSkipEnabled: res.titleSkipEnabled,
-          });
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      chrome.runtime.sendMessage(
+        EXTENSION_ID,
+        { from: 'website', action: 'getFilterSettings' },
+        (response) => {
+          // Check for chrome.runtime.lastError
+          if (chrome.runtime.lastError) {
+            console.error('Chrome runtime error:', chrome.runtime.lastError);
+            setError(`Extension error: ${chrome.runtime.lastError.message}`);
+            setIsLoading(false);
+            return;
+          }
+
+          if (!response) {
+            console.error('No response from extension');
+            setError('No response from extension - make sure it\'s installed and running');
+            setIsLoading(false);
+            return;
+          }
+
+          if (response.success) {
+            console.log('Received data from extension:', response);
+            
+            const updated: Record<FilterKey, string[]> = {
+              badWords: response.badWords || [],
+              titleFilterWords: response.titleFilterWords || [],
+              titleSkipWords: response.titleSkipWords || [],
+            };
+            
+            setFilters(updated);
+            setToggles({
+              badWordsEnabled: response.badWordsEnabled ?? true,
+              titleFilterEnabled: response.titleFilterEnabled ?? true,
+              titleSkipEnabled: response.titleSkipEnabled ?? true,
+            });
+          } else {
+            console.error('Extension returned error:', response.error);
+            setError(response.error || 'Failed to load settings from extension');
+          }
+          
+          setIsLoading(false);
         }
-      }
-    );
+      );
+    } catch (err) {
+      console.error('Error sending message to extension:', err);
+      setError('Failed to communicate with extension');
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    fetchData();
+    // Add a small delay to ensure extension is ready
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [fetchData]);
 
   const sendUpdate = (key: string, value: any) => {
+    if (!isExtension()) return;
+
     chrome.runtime.sendMessage(EXTENSION_ID, {
       from: 'website',
       action: 'updateFilterSetting',
       key,
       value,
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Error updating extension:', chrome.runtime.lastError);
+        setError(`Update failed: ${chrome.runtime.lastError.message}`);
+      } else if (response && !response.success) {
+        console.error('Extension update failed:', response.error);
+        setError(response.error || 'Failed to update extension');
+      }
     });
   };
 
@@ -87,6 +141,12 @@ const FilterSettingsConfigs: React.FC = () => {
     updated[index] = value;
     setFilters(prev => ({ ...prev, [filterKey]: updated }));
     sendUpdate(filterKey, updated);
+    // Clear the edit state after update
+    setEditWords(prev => {
+      const newState = { ...prev };
+      delete newState[`${filterKey}-${index}`];
+      return newState;
+    });
   };
 
   const handleDeleteWord = (filterKey: FilterKey, index: number) => {
@@ -106,9 +166,49 @@ const FilterSettingsConfigs: React.FC = () => {
 
   const currentFilter = FILTERS.find(f => f.key === activeTab);
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-6 bg-gray-100">
+        <div className="flex items-center justify-center p-8">
+          <div className="text-lg text-gray-600">Loading extension data...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 space-y-6 bg-gray-100">
-      <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-blue-500 to-purple-600">Exclusions</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-blue-500 to-purple-600">
+          Exclusions
+        </h1>
+        <button
+          onClick={fetchData}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          disabled={isLoading}
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <strong>Error:</strong> {error}
+          <button
+            onClick={fetchData}
+            className="ml-4 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Extension Status */}
+      <div className="text-sm text-gray-600">
+        Extension Status: {isExtension() ? '✅ Available' : '❌ Not Available'}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-4 border-b pb-2 mb-4">
@@ -178,6 +278,11 @@ const FilterSettingsConfigs: React.FC = () => {
                 onChange={e =>
                   setNewWord(prev => ({ ...prev, [activeTab]: e.target.value }))
                 }
+                onKeyPress={e => {
+                  if (e.key === 'Enter') {
+                    handleAddWord(activeTab);
+                  }
+                }}
               />
               <button
                 onClick={() => handleAddWord(activeTab)}
@@ -189,6 +294,14 @@ const FilterSettingsConfigs: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Debug Info (remove in production) */}
+      {/* <details className="text-xs text-gray-500">
+        <summary>Debug Info (click to expand)</summary>
+        <pre className="mt-2 p-2 bg-gray-50 rounded overflow-auto">
+          {JSON.stringify({ filters, toggles }, null, 2)}
+        </pre>
+      </details> */}
     </div>
   );
 };

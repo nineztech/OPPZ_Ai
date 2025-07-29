@@ -6,7 +6,8 @@ import {
   User2,
   Bookmark,
   CreditCard,
-  Lock
+  Lock,
+  UserCheck
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -142,6 +143,15 @@ export const Sidebar: React.FC = () => {
             to="/subscription"
             icon={<CreditCard size={20} />}
             text="Membership Plan"
+            restricted={!isProfileComplete}
+            onRestricted={handleBlockedRoute}
+            navigate={navigate}
+            isProfileComplete={isProfileComplete}
+          />
+          <SidebarLink
+            to="/Contact"
+            icon={<UserCheck size={20} />}
+            text="Help & Contact"
             restricted={!isProfileComplete}
             onRestricted={handleBlockedRoute}
             navigate={navigate}

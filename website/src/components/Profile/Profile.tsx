@@ -1,3 +1,6 @@
+ 
+
+
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Check, UserCog, Upload, User, Save } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
@@ -6,6 +9,7 @@ import FilterSettingsConfigs from './FilterSettingsConfig';
 import SkillsManager from './Skills';
 import ExperienceManager from './Experiance';
 
+// Types
 interface ProfileData {
   firstName: string;
   lastName: string;
@@ -40,6 +44,34 @@ interface ExistingProfile extends ProfileData {
   updatedAt: string;
 }
 
+interface ExtensionSyncResult {
+  success: boolean;
+  totalFields: number;
+  successCount: number;
+  failedCount: number;
+  failedFields: string[];
+  results: Array<{
+    field: string;
+    success: boolean;
+    error?: string;
+  }>;
+}
+
+// Constants
+const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim';
+const ALLOWED_FILE_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const REQUEST_TIMEOUT = 30000; // 30 seconds
+
+const placeholderMap: Record<string, string> = {
+  YearsOfExperience: 'Years of Experience',
+  FirstName: 'First Name',
+  LastName: 'Last Name',
+  PhoneNumber: 'Phone Number',
+  City: 'City',
+  Email: 'Email',
+};
+
 const initialState: ProfileData = {
   firstName: '',
   lastName: '',
@@ -57,6 +89,363 @@ const initialState: ProfileData = {
   additionalInfo: '',
 };
 
+// Utility Functions
+const isChromeExtension = (): boolean => {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.chrome !== 'undefined' &&
+    window.chrome.runtime &&
+    typeof window.chrome.runtime.sendMessage === 'function'
+  );
+};
+
+const isExtensionAvailable = async (extensionId: string): Promise<boolean> => {
+  if (!isChromeExtension()) {
+    console.log('❌ Chrome extension API not available');
+    return false;
+  }
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        extensionId,
+        { action: 'ping', from: 'website' },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            console.log('❌ Extension not responding:', chrome.runtime.lastError.message);
+            reject(chrome.runtime.lastError);
+          } else {
+            console.log('✅ Extension is available and responding');
+            resolve();
+          }
+        }
+      );
+    });
+    return true;
+  } catch (error) {
+    console.log('❌ Extension availability check failed:', error);
+    return false;
+  }
+};
+
+const sendDataToExtension = async (profileData: ProfileData): Promise<ExtensionSyncResult> => {
+  console.log('🚀 === STARTING EXTENSION SYNC ===');
+  console.log('📦 Profile data to send:', profileData);
+
+  if (!isChromeExtension()) {
+    console.warn('❌ Not in Chrome Extension environment');
+    return { success: false, totalFields: 0, successCount: 0, failedCount: 0, failedFields: [], results: [] };
+  }
+
+  const extensionAvailable = await isExtensionAvailable(EXTENSION_ID);
+  if (!extensionAvailable) {
+    console.warn('❌ Extension not available or not responding');
+    return { success: false, totalFields: 0, successCount: 0, failedCount: 0, failedFields: [], results: [] };
+  }
+
+  const defaultFieldData = {
+    FirstName: profileData.firstName || '',
+    LastName: profileData.lastName || '',
+    Email: profileData.email || '',
+    PhoneNumber: profileData.phone || '',
+    City: profileData.city || '',
+    YearsOfExperience: profileData.experience || '',
+  };
+
+  console.log('📤 Sending data to extension:', defaultFieldData);
+
+  // Store in chrome storage if available
+  try {
+    if (chrome.storage && chrome.storage.local) {
+      await chrome.storage.local.set({ defaultFields: defaultFieldData });
+      console.log('✅ Data saved to chrome storage');
+    }
+  } catch (storageError) {
+    console.warn('⚠️ Chrome storage not available:', storageError);
+  }
+
+  const results: Array<{ field: string; success: boolean; error?: string }> = [];
+
+  // Process each field sequentially
+  for (const [key, value] of Object.entries(defaultFieldData)) {
+    const placeholderIncludes = placeholderMap[key];
+    
+    if (!value || value.trim() === '') {
+      console.log(`⏭️ Skipping empty field: ${key}`);
+      results.push({ field: key, success: false, error: 'Empty value' });
+      continue;
+    }
+
+    const fieldConfig = {
+      placeholder: placeholderIncludes,
+      value: value.toString().trim(),
+      fieldName: key
+    };
+
+    console.log(`📤 [${key}] Sending to extension:`, fieldConfig);
+
+    try {
+      const response = await new Promise<any>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Extension request timeout'));
+        }, 5000);
+
+        chrome.runtime.sendMessage(
+          EXTENSION_ID,
+          {
+            from: 'website',
+            action: 'updateInputFieldValue',
+            data: fieldConfig,
+            timestamp: Date.now()
+          },
+          (response) => {
+            clearTimeout(timeoutId);
+            
+            if (chrome.runtime.lastError) {
+              console.error(`❌ [${key}] Extension error:`, chrome.runtime.lastError.message);
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              console.log(`✅ [${key}] Extension response:`, response);
+              resolve(response);
+            }
+          }
+        );
+      });
+
+      const success = response && (response.success === true || response.status === 'success');
+      results.push({ field: key, success });
+      
+      console.log(`${success ? '✅' : '❌'} [${key}] Field ${success ? 'sent successfully' : 'failed'}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      results.push({ field: key, success: false, error: errorMessage });
+      console.error(`❌ [${key}] Error sending field:`, errorMessage);
+    }
+
+    // Small delay between requests
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  const failedFields = results.filter(r => !r.success);
+  
+  console.log(`📊 Extension sync summary: ${successCount}/${results.length} fields sent successfully`);
+  
+  if (failedFields.length > 0) {
+    console.warn('❌ Failed fields:', failedFields.map(f => `${f.field}: ${f.error}`));
+  }
+
+  return {
+    success: successCount > 0,
+    totalFields: results.length,
+    successCount,
+    failedCount: failedFields.length,
+    results,
+    failedFields: failedFields.map(f => f.field)
+  };
+};
+
+// Custom Hooks
+const useApiBaseUrl = () => {
+  return useMemo(() => {
+    const envUrl = process.env.REACT_APP_API_BASE_URL;
+    if (envUrl) {
+      return envUrl.replace(/\/$/, '');
+    }
+    
+    const currentHost = window.location.hostname;
+    const protocol = window.location.protocol;
+    
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return "http://localhost:5006";
+    }
+    
+    const isProduction = protocol === 'https:';
+    if (isProduction) {
+  console.log('Running in production environment');
+}
+    const productionPatterns = [
+      `${protocol}//api.${currentHost}`,
+      `${protocol}//${currentHost}/api`,
+      `${protocol}//backend.${currentHost}`,
+      `${protocol}//${currentHost.replace('www.', 'api.')}`,
+    ];
+    
+    return productionPatterns[0];
+  }, []);
+};
+
+const useLocalStorage = (key: string, defaultValue: any = null) => {
+  const getValue = useCallback(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : defaultValue;
+      }
+    } catch (error) {
+      console.warn(`Error reading localStorage key "${key}":`, error);
+    }
+    return defaultValue;
+  }, [key, defaultValue]);
+
+  const setValue = useCallback((value: any) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch (error) {
+      console.warn(`Error setting localStorage key "${key}":`, error);
+    }
+  }, [key]);
+
+  return [getValue, setValue] as const;
+};
+
+// API Helper
+const makeApiRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const defaultOptions: RequestInit = {
+    credentials: 'include',
+    headers: {
+      'Accept': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  if (options.body && typeof options.body === 'string') {
+    defaultOptions.headers = {
+      ...defaultOptions.headers,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+  try {
+    console.log('Making API request:', { url, method: options.method || 'GET' });
+
+    const response = await fetch(url, {
+      ...defaultOptions,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    console.log('API response received:', { status: response.status, url: response.url });
+    
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error('API request failed:', { url, error: error instanceof Error ? error.message : error });
+    throw error;
+  }
+};
+
+// Validation Helpers
+const validateFile = (file: File): { isValid: boolean; error?: string } => {
+  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+    return { isValid: false, error: 'Please select a PDF, DOC, or DOCX file.' };
+  }
+  
+  if (file.size > MAX_FILE_SIZE) {
+    return { isValid: false, error: 'File size must be less than 5MB.' };
+  }
+  
+  return { isValid: true };
+};
+
+const isFieldFilled = (value: any): boolean => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (typeof value === 'number') return !isNaN(value);
+  return Boolean(value);
+};
+
+// Components
+const SyncButton: React.FC<{
+  isExtensionSyncing: boolean;
+  profileStatus: ProfileStatus;
+  onSync: () => void;
+}> = ({ isExtensionSyncing, profileStatus, onSync }) => {
+  if (!isChromeExtension()) return null;
+  
+  return (
+    <button
+      onClick={onSync}
+      disabled={isExtensionSyncing || !profileStatus.requiredFieldsFilled}
+      className={`w-full mt-4 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
+        profileStatus.requiredFieldsFilled && !isExtensionSyncing
+          ? 'bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white'
+          : 'bg-gray-400 text-gray-700 cursor-not-allowed'
+      }`}
+    >
+      {isExtensionSyncing ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          Syncing...
+        </>
+      ) : (
+        <>
+          <Upload className="w-4 h-4" />
+          Sync with Extension
+        </>
+      )}
+    </button>
+  );
+};
+ 
+
+// const ExtensionSyncStatus: React.FC<{
+//   status: string;
+//   isExtensionSyncing: boolean;
+// }> = ({ status, isExtensionSyncing }) => {
+//   if (!status) return null;
+
+//   return (
+//     <div className="mt-4 mx-8 text-sm text-blue-800 bg-blue-100 border border-blue-300 rounded p-3">
+//       {isExtensionSyncing ? (
+//         <span className="flex items-center gap-2">
+//           <span className="animate-spin w-4 h-4 border-b-2 border-blue-600 rounded-full" />
+//           Syncing with extension...
+//         </span>
+//       ) : (
+//         status
+//       )}
+//     </div>
+//   );
+// };
+
+// const ProfileProgress: React.FC<{ progress: number }> = ({ progress }) => (
+//   <div className="relative w-32 h-32">
+//     <svg className="absolute top-0 left-0 w-full h-full transform -rotate-90">
+//       <circle cx="50%" cy="50%" r="45" stroke="#4B5563" strokeWidth="10" fill="none" />
+//       <circle
+//         cx="50%"
+//         cy="50%"
+//         r="45"
+//         stroke="url(#gradient)"
+//         strokeWidth="10"
+//         fill="none"
+//         strokeDasharray="283"
+//         strokeDashoffset={`${283 - (progress / 100) * 283}`}
+//         strokeLinecap="round"
+//       />
+//       <defs>
+//         <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+//           <stop offset="0%" stopColor="#a855f7" />
+//           <stop offset="100%" stopColor="#ec4899" />
+//         </linearGradient>
+//       </defs>
+//     </svg>
+//     <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+//       <span className="text-xs text-gray-300">Profile</span>
+//       <span className="text-xs text-gray-300">Completion</span>
+//       <span className="text-xl font-bold">{progress}%</span>
+//     </div>
+//   </div>
+// );
+
+// Main Component
 const ProfileBuilder: React.FC = () => {
   const [data, setData] = useState<ProfileData>(initialState);
   const [resumeFile, setResumeFile] = useState<string | null>(null);
@@ -76,64 +465,18 @@ const ProfileBuilder: React.FC = () => {
     resumeUploaded: false,
     submitted: false
   });
+  const [extensionSyncStatus, setExtensionSyncStatus] = useState<string>('');
+  const [isExtensionSyncing, setIsExtensionSyncing] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // FIXED: More robust API base URL detection for production
-  const getApiBaseUrl = () => {
-    // Priority 1: Environment variable (most reliable for production)
-    const envUrl = process.env.REACT_APP_API_BASE_URL;
-    if (envUrl) {
-      return envUrl.replace(/\/$/, ''); // Remove trailing slash
-    }
-    
-    const currentHost = window.location.hostname;
-    const protocol = window.location.protocol;
-    const port = window.location.port;
-    
-    // Priority 2: Local development
-    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-      return "http://localhost:5006";
-    }
-    
-    // Priority 3: Production - more robust detection
-    // Check if we're on HTTPS (production) or HTTP (staging)
-    const isProduction = protocol === 'https:';
-    
-    // Common production patterns
-    const productionPatterns = [
-      `${protocol}//api.${currentHost}`, // api.yourdomain.com
-      `${protocol}//${currentHost}/api`, // yourdomain.com/api
-      `${protocol}//backend.${currentHost}`, // backend.yourdomain.com
-      `${protocol}//${currentHost.replace('www.', 'api.')}`, // Replace www with api
-    ];
-    
-    // For staging/development with specific ports
-    const stagingPatterns = [
-      `${protocol}//${currentHost}:5006`, // Same domain with port
-      `${protocol}//${currentHost}:3001`, // Common backend port
-      `${protocol}//${currentHost}${port ? `:${port}` : ''}/api`, // Current port with /api
-    ];
-    
-    const patterns = isProduction ? productionPatterns : [...productionPatterns, ...stagingPatterns];
-    
-    // Return the first pattern - you might want to make this configurable
-    return patterns[0];
-  };
+  const api_baseUrl = useApiBaseUrl();
+  const [getStoredStatus, setStoredStatus] = useLocalStorage('profileStatus');
+  const [getStoredUser] = useLocalStorage('user');
 
-  const api_baseUrl = getApiBaseUrl();
+  const requiredFields = useMemo(() => [
+    'firstName', 'lastName', 'email', 'experience', 'city', 'phone', 'currentSalary', 'expectedSalary'
+  ], []);
 
-  // Required fields for profile completion
-  const requiredFields = useMemo(() => ['firstName', 'lastName', 'email', 'experience', 'city', 'phone', 'currentSalary', 'expectedSalary'], []);
-
-  // Helper function to safely check if a field value is filled
-  const isFieldFilled = (value: any): boolean => {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'string') return value.trim() !== '';
-    if (typeof value === 'number') return !isNaN(value);
-    return Boolean(value);
-  };
-
-  // Function to update profile status
   const updateProfileStatus = useCallback((): ProfileStatus => {
     const requiredFieldsStatus = requiredFields.every(field => {
       const value = data[field as keyof ProfileData];
@@ -154,122 +497,86 @@ const ProfileBuilder: React.FC = () => {
 
     console.log('Updating profile status:', statusData);
     setProfileStatus(statusData);
-
-    // Safe localStorage usage
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('profileStatus', JSON.stringify(statusData));
-      }
-    } catch (error) {
-      console.warn('localStorage not available:', error);
-    }
+    setStoredStatus(statusData);
 
     // Dispatch custom event
     try {
       if (typeof window !== 'undefined' && window.dispatchEvent) {
-        window.dispatchEvent(new CustomEvent('profileStatusChanged', {
-          detail: statusData
-        }));
+        window.dispatchEvent(new CustomEvent('profileStatusChanged', { detail: statusData }));
       }
     } catch (error) {
       console.warn('Custom event dispatch failed:', error);
     }
 
     return statusData;
-  }, [data, resumeFile, selectedFile, profileExists, isSubmitted, requiredFields]);
+  }, [data, resumeFile, selectedFile, profileExists, isSubmitted, requiredFields, setStoredStatus]);
 
-  // Enhanced API request function with better error handling and CORS support
-  const makeApiRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
-    const defaultOptions: RequestInit = {
-      credentials: 'include', // Include cookies for CORS
-      headers: {
-        'Accept': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
-
-    // Only add Content-Type for JSON requests
-    if (options.body && typeof options.body === 'string') {
-      defaultOptions.headers = {
-        ...defaultOptions.headers,
-        'Content-Type': 'application/json',
-      };
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
+  const handleExtensionSync = useCallback(async () => {
+    console.log('🔄 Starting extension sync...');
+    
+    setIsExtensionSyncing(true);
+    setExtensionSyncStatus('Checking extension availability...');
+    
     try {
-      console.log('Making API request:', {
-        url,
-        method: options.method || 'GET',
-        headers: defaultOptions.headers,
-        hasBody: !!options.body
-      });
+      if (!isChromeExtension()) {
+        setExtensionSyncStatus('❌ Chrome extension environment not detected');
+        return;
+      }
 
-      const response = await fetch(url, {
-        ...defaultOptions,
-        signal: controller.signal,
-      });
+      setExtensionSyncStatus('Connecting to extension...');
       
-      clearTimeout(timeoutId);
+      const extensionAvailable = await isExtensionAvailable(EXTENSION_ID);
+      if (!extensionAvailable) {
+        setExtensionSyncStatus('❌ Extension not installed or not responding');
+        return;
+      }
+
+      setExtensionSyncStatus('Syncing profile data...');
       
-      console.log('API response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        url: response.url
-      });
+      const results = await sendDataToExtension(data);
       
-      return response;
+      if (results.success) {
+        if (results.failedCount === 0) {
+          setExtensionSyncStatus('✅ All fields synced successfully with extension!');
+        } else {
+          setExtensionSyncStatus(
+            `⚠️ ${results.successCount}/${results.totalFields} fields synced. Failed: ${results.failedFields.join(', ')}`
+          );
+        }
+      } else {
+        setExtensionSyncStatus('❌ Failed to sync any fields with extension');
+      }
     } catch (error) {
-      clearTimeout(timeoutId);
-      console.error('API request failed:', {
-        url,
-        error: error instanceof Error ? error.message : error,
-        name: error instanceof Error ? error.name : 'Unknown'
-      });
-      throw error;
+      console.error('❌ Extension sync error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setExtensionSyncStatus(`❌ Extension sync failed: ${errorMessage}`);
+    } finally {
+      setIsExtensionSyncing(false);
+      
+      // Clear status after 8 seconds
+      setTimeout(() => {
+        setExtensionSyncStatus('');
+      }, 8000);
     }
-  };
+  }, [data]);
 
-  // Enhanced profile loading with better error handling and debugging
   const loadProfile = useCallback(async () => {
     console.log('🔄 Starting profile load process...');
     setLoading(true);
     setError(null);
     
     try {
-      // Load from localStorage if available
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          const storedStatus = localStorage.getItem('profileStatus');
-          if (storedStatus) {
-            const parsedStatus = JSON.parse(storedStatus);
-            setProfileStatus(parsedStatus);
-            console.log('📦 Loaded status from localStorage:', parsedStatus);
-          }
-        }
-      } catch (storageError) {
-        console.warn('⚠️ Error loading from localStorage:', storageError);
+      // Load from localStorage
+      const storedStatus = getStoredStatus();
+      if (storedStatus) {
+        setProfileStatus(storedStatus);
+        console.log('📦 Loaded status from localStorage:', storedStatus);
       }
 
-      // Get user email from localStorage
-      let userEmail: string | null = null;
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            userEmail = parsedUser?.email;
-            console.log('👤 Found user email:', userEmail);
-          }
-        }
-      } catch (userError) {
-        console.warn('⚠️ Error loading user from localStorage:', userError);
-      }
-
+      // Get user email
+      const storedUser = getStoredUser();
+      const userEmail = storedUser?.email;
+      
       if (!userEmail) {
         console.log("❌ No user email found in localStorage");
         setProfileExists(false);
@@ -279,28 +586,15 @@ const ProfileBuilder: React.FC = () => {
       }
 
       console.log("🔍 Loading profile for email:", userEmail);
-      console.log("🌐 API Base URL:", api_baseUrl);
-
+      
       const encodedEmail = encodeURIComponent(userEmail);
       const profileUrl = `${api_baseUrl}/api/profile/email/${encodedEmail}`;
       
-      console.log("📡 Making request to:", profileUrl);
-
-      const response = await makeApiRequest(profileUrl, {
-        method: 'GET',
-      });
-
-      console.log("📡 Profile fetch response:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        url: response.url
-      });
+      const response = await makeApiRequest(profileUrl, { method: 'GET' });
 
       if (response.ok) {
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-          console.error('❌ Response is not JSON:', contentType);
           throw new Error('Server returned non-JSON response');
         }
 
@@ -317,26 +611,20 @@ const ProfileBuilder: React.FC = () => {
           setProfileId(id);
           setIsSubmitted(true);
           
-          console.log("✅ Profile loaded successfully:", {
-            id,
-            email: profileData.email,
-            resumeFile: resume,
-            hasData: Object.keys(profileData).length > 0
-          });
+          console.log("✅ Profile loaded successfully");
         } else {
-          console.log("❌ Profile not found in response:", result);
+          console.log("❌ Profile not found in response");
           setProfileExists(false);
           setProfileId(null);
           setIsSubmitted(false);
         }
       } else if (response.status === 404) {
-        console.log("ℹ️ Profile not found (404) - user needs to create profile");
+        console.log("ℹ️ Profile not found (404)");
         setProfileExists(false);
         setProfileId(null);
         setIsSubmitted(false);
       } else {
-        // Try to get error details
-        let errorText = '';
+        let errorText = response.statusText;
         try {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
@@ -346,17 +634,11 @@ const ProfileBuilder: React.FC = () => {
             errorText = await response.text();
           }
         } catch (e) {
-          errorText = response.statusText || 'Unknown error';
+          // Use default error text
         }
         
-        console.error("❌ Profile fetch failed:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-          url: response.url
-        });
-        
-        setError(`Failed to load profile: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
+        console.error("❌ Profile fetch failed:", { status: response.status, errorText });
+        setError(`Failed to load profile: ${response.status} ${errorText}`);
         setProfileExists(false);
         setProfileId(null);
         setIsSubmitted(false);
@@ -382,84 +664,53 @@ const ProfileBuilder: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [api_baseUrl]);
+  }, [api_baseUrl, getStoredStatus, getStoredUser]);
 
-  // Load existing profile data and status
+  // Load profile on component mount
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
 
+  // Set initial email
   useEffect(() => {
-  const storedEmail = localStorage.getItem('userEmail');
-  if (storedEmail) {
-    setEmailInitial(storedEmail);
-    setData(prev => ({ ...prev, email: storedEmail })); // 🔥 This ensures it gets saved!
-  }
-}, []);
+    const storedUser = getStoredUser();
+    const email = storedUser?.email;
+    if (email) {
+      setEmailInitial(email);
+      setData(prev => ({ ...prev, email }));
+    }
+  }, [getStoredUser]);
 
-  // Update status whenever relevant data changes
+  // Update status when data changes
   useEffect(() => {
-
-const getEmailInitialSafe = () => {
-      try {
-        const stored = localStorage.getItem('userEmail');
-        return stored ? stored : null;
-      } catch {
-        return null;
-      }
-    };
-
-    const initial = getEmailInitialSafe();
-    setEmailInitial(initial);
-  
-
     const timeoutId = setTimeout(() => {
       updateProfileStatus();
-    }, 300); // Debounce to avoid too many updates
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [data, resumeFile, selectedFile, profileExists, isSubmitted, updateProfileStatus]);
 
-  const handleChange = (
+  const handleChange = useCallback((
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setData(prev => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log("📎 File upload handler called");
-    console.log("📎 Selected file:", file);
+    console.log("📎 File upload handler called, file:", file);
     
     if (file) {
-      console.log("📎 File details:", {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified
-      });
-      
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (!allowedTypes.includes(file.type)) {
-        alert('⚠️ Please select a PDF, DOC, or DOCX file.');
+      const validation = validateFile(file);
+      if (!validation.isValid) {
+        alert(`⚠️ ${validation.error}`);
         e.target.value = '';
         setSelectedFile(null);
         setResumeFile(null);
         return;
       }
       
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('⚠️ File size must be less than 5MB.');
-        e.target.value = '';
-        setSelectedFile(null);
-        setResumeFile(null);
-        return;
-      }
-      
-      // Store both the file object and the filename
       setSelectedFile(file);
       setResumeFile(file.name);
       console.log("✅ File set successfully:", file.name);
@@ -468,9 +719,9 @@ const getEmailInitialSafe = () => {
       setSelectedFile(null);
       setResumeFile(null);
     }
-  };
+  }, []);
 
-  const calculateProgress = () => {
+   const calculateProgress = useCallback(() => {
     let filled = 0;
     
     // Count filled required fields
@@ -493,197 +744,377 @@ const getEmailInitialSafe = () => {
     // Add resume
     if (resumeFile && (selectedFile || profileExists)) filled++;
     
-    // Total fields = required + optional + resume
     const totalFields = requiredFields.length + optionalFields.length + 1;
     return Math.round((filled / totalFields) * 100);
+  }, [data, resumeFile, selectedFile, profileExists, requiredFields]);
+
+ const handleSubmit = useCallback(async () => {
+  console.log("🚀 === STARTING PROFILE SUBMISSION ===");
+  
+  setLoading(true);
+  setError(null);
+  
+  // Enhanced validation with detailed error messages
+  const validationErrors = [];
+  
+  // Check required fields
+  const missingFields = requiredFields.filter(field => {
+    const value = data[field as keyof ProfileData];
+    return !isFieldFilled(value);
+  });
+  
+  if (missingFields.length > 0) {
+    validationErrors.push(`Missing required fields: ${missingFields.join(', ')}`);
+  }
+  
+  // Enhanced resume validation
+  if (!resumeFile) {
+    validationErrors.push('Resume is required');
+  } else if (!selectedFile && !profileExists) {
+    validationErrors.push('Please upload your resume');
+  }
+  
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (data.email && !emailRegex.test(data.email)) {
+    validationErrors.push('Please enter a valid email address');
+  }
+  
+  // Phone validation (basic check)
+  if (data.phone && data.phone.length < 10) {
+    validationErrors.push('Please enter a valid phone number');
+  }
+  
+  // Experience validation
+  if (data.experience) {
+    const experienceNum = parseInt(data.experience);
+    if (isNaN(experienceNum) || experienceNum < 0 || experienceNum > 50) {
+      validationErrors.push('Experience must be a number between 0 and 50');
+    }
+  }
+  
+  // Age validation
+  if (data.age) {
+    const ageNum = parseInt(data.age);
+    if (isNaN(ageNum) || ageNum < 18 || ageNum > 100) {
+      validationErrors.push('Age must be a number between 18 and 100');
+    }
+  }
+  
+  // Notice period validation
+  if (data.noticePeriod) {
+    const noticePeriodNum = parseInt(data.noticePeriod);
+    if (isNaN(noticePeriodNum) || noticePeriodNum < 0 || noticePeriodNum > 365) {
+      validationErrors.push('Notice period must be a number between 0 and 365 days');
+    }
+  }
+  
+  // Salary validation
+  if (data.currentSalary) {
+    const currentSalaryNum = parseInt(data.currentSalary.replace(/[^\d]/g, ''));
+    if (isNaN(currentSalaryNum) || currentSalaryNum < 0) {
+      validationErrors.push('Current salary must be a valid positive number');
+    }
+  }
+  
+  if (data.expectedSalary) {
+    const expectedSalaryNum = parseInt(data.expectedSalary.replace(/[^\d]/g, ''));
+    if (isNaN(expectedSalaryNum) || expectedSalaryNum < 0) {
+      validationErrors.push('Expected salary must be a valid positive number');
+    }
+  }
+  
+  // Display validation errors
+  if (validationErrors.length > 0) {
+    const errorMessage = validationErrors.join('\n• ');
+    setError(`Please fix the following issues:\n• ${errorMessage}`);
+    setLoading(false);
+    return;
+  }
+  
+  // File validation if new file selected
+  if (selectedFile) {
+    const validation = validateFile(selectedFile);
+    if (!validation.isValid) {
+      setError(validation.error!);
+      setLoading(false);
+      return;
+    }
+  }
+  
+  // Prepare form data
+  const formData = new FormData();
+  
+  // Clean and prepare data
+  const cleanedData = {
+    ...data,
+    // Ensure email is lowercase and trimmed
+    email: data.email.toLowerCase().trim(),
+    // Ensure phone is properly formatted
+    phone: data.phone.replace(/\D/g, ''), // Remove non-digits
+    // Ensure numeric fields are properly formatted
+    experience: data.experience ? parseInt(data.experience).toString() : '',
+    age: data.age ? parseInt(data.age).toString() : '',
+    noticePeriod: data.noticePeriod ? parseInt(data.noticePeriod).toString() : '',
+    // Clean salary fields
+    currentSalary: data.currentSalary.replace(/[^\d]/g, ''),
+    expectedSalary: data.expectedSalary.replace(/[^\d]/g, ''),
+    // Trim text fields
+    firstName: data.firstName.trim(),
+    lastName: data.lastName.trim(),
+    city: data.city.trim(),
+    additionalInfo: data.additionalInfo.trim(),
+  };
+  
+  formData.append('data', JSON.stringify(cleanedData));
+  
+  // Add file if selected
+  if (selectedFile) {
+    formData.append('resume', selectedFile);
+  }
+  
+  // Add metadata
+  formData.append('metadata', JSON.stringify({
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    source: 'web-app',
+    version: '1.0.0'
+  }));
+  
+  try {
+    // Determine endpoint and method
+    const url = profileExists && profileId 
+      ? `${api_baseUrl}/api/profile/${profileId}`
+      : `${api_baseUrl}/api/profile`;
+    const method = profileExists && profileId ? 'PUT' : 'POST';
+    
+    console.log(`${profileExists ? '🔄 Updating' : '🆕 Creating'} profile at ${url}`);
+    console.log('📦 Sending data:', Object.keys(cleanedData));
+    console.log('📎 File attached:', !!selectedFile);
+    
+    // Make API request with enhanced error handling
+    const response = await makeApiRequest(url, {
+      method,
+      body: formData,
+    });
+    
+    // Handle response
+    if (response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
+      }
+      
+      const result = await response.json();
+      console.log("✅ Success response:", result);
+      
+      // Validate response structure
+      if (!result.success) {
+        throw new Error(result.message || 'Server returned unsuccessful response');
+      }
+      
+      if (!result.profile) {
+        throw new Error('Profile data not returned from server');
+      }
+      
+      // Update component state with response data
+      const profile: ExistingProfile = result.profile;
+      const { id, resume, resumeUrl, createdAt, updatedAt, ...profileData } = profile;
+      
+      // Update all state
+      setData(profileData);
+      setResumeFile(resume);
+      setProfileId(id);
+      setIsSubmitted(true);
+      setProfileExists(true);
+      
+      // Clear file input
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      // Success feedback
+      const action = profileExists ? 'updated' : 'created';
+      setError(null);
+      
+      // Show success message
+      const successMessage = `✅ Profile ${action} successfully!`;
+      alert(successMessage);
+      
+      // Update profile status
+      setTimeout(() => {
+        updateProfileStatus();
+      }, 100);
+      
+      // Auto-sync with extension if available
+      if (isChromeExtension()) {
+  const fieldsToSend = {
+    FirstName: cleanedData.firstName,
+    LastName: cleanedData.lastName,
+    Email: cleanedData.email,
+    PhoneNumber: cleanedData.phone,
+    City: cleanedData.city,
+    YearsOfExperience: cleanedData.experience
   };
 
-  const handleSubmit = async () => {
-    console.log("🚀 === DEBUGGING FRONTEND SUBMISSION ===");
-    console.log("🔍 Profile exists:", profileExists);
-    console.log("🔍 Profile ID:", profileId);
-    console.log("🌐 API Base URL:", api_baseUrl);
-    
-    setLoading(true);
-    setError(null);
-    
-    // Check if all required fields are filled
-    const allRequiredFieldsFilled = requiredFields.every(field => {
-      const value = data[field as keyof ProfileData];
-      return isFieldFilled(value);
-    });
+  const placeholderMap = {
+    FirstName: 'First Name',
+    LastName: 'Last Name',
+    Email: 'Email',
+    PhoneNumber: 'Phone Number',
+    City: 'City',
+    YearsOfExperience: 'Years of Experience'
+  };
 
-    console.log("✅ Required fields filled:", allRequiredFieldsFilled);
-    console.log("📎 Resume file:", resumeFile);
-    console.log("📎 Selected file object:", selectedFile);
+  const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim';
 
-    if (!allRequiredFieldsFilled) {
-      setError('Please fill all required fields before submitting.');
-      setLoading(false);
-      return;
-    }
+  console.log('📤 Sending fields to extension:', fieldsToSend);
 
-    if (!resumeFile || (!selectedFile && !profileExists)) {
-      setError('Please upload your resume before submitting.');
-      setLoading(false);
-      return;
-    }
-
-    // Validate selected file if provided
-    if (selectedFile) {
-      console.log("📎 Selected file details:", {
-        name: selectedFile.name,
-        size: selectedFile.size,
-        type: selectedFile.type,
-        lastModified: selectedFile.lastModified
-      });
-
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (!allowedTypes.includes(selectedFile.type)) {
-        setError('Please select a PDF, DOC, or DOCX file.');
-        setLoading(false);
-        return;
-      }
-
-      // Validate file size (5MB max)
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError('File size must be less than 5MB.');
-        setLoading(false);
-        return;
-      }
-    }
-
-    const formData = new FormData();
-    formData.append('data', JSON.stringify(data));
-    
-    // Only append file if a new one is selected
-    if (selectedFile) {
-      formData.append('resume', selectedFile);
-    }
-
-    console.log("📦 FormData created:");
-    console.log("📦 Data:", JSON.stringify(data));
-    if (selectedFile) {
-      console.log("📦 File:", selectedFile);
-    }
+  for (const [key, value] of Object.entries(fieldsToSend)) {
+    const fieldConfig = {
+      placeholder: placeholderMap[key as keyof typeof placeholderMap],
+      value
+    };
 
     try {
-      let url: string;
-      let method: string;
-      
-      if (profileExists && profileId) {
-        // Update existing profile
-        url = `${api_baseUrl}/api/profile/${profileId}`;
-        method = 'PUT';
-        console.log("🔄 Updating existing profile");
-      } else {
-        // Create new profile
-        url = `${api_baseUrl}/api/profile`;
-        method = 'POST';
-        console.log("🆕 Creating new profile");
-      }
-      
-      console.log("🌐 Making API request to:", url);
-      console.log("🌐 Method:", method);
-      
-      const response = await makeApiRequest(url, {
-        method: method,
-        body: formData,
+      await new Promise<void>((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          EXTENSION_ID,
+          {
+            from: 'website',
+            action: 'updateInputFieldValue',
+            data: fieldConfig
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(`❌ [${key}] Failed to sync:`, chrome.runtime.lastError.message);
+              reject(chrome.runtime.lastError);
+            } else {
+              console.log(`✅ [${key}] Synced with extension`, response);
+              resolve();
+            }
+          }
+        );
       });
 
-      console.log("📡 Response status:", response.status);
-
-      if (response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          console.error('❌ Submit response is not JSON:', contentType);
-          throw new Error('Server returned non-JSON response');
-        }
-
-        const result = await response.json();
-        console.log("✅ Success response:", result);
-        
-        if (result.success && result.profile) {
-          const profile: ExistingProfile = result.profile;
-          const { id, resume, resumeUrl, createdAt, updatedAt, ...profileData } = profile;
-          
-          // Update local state with response data
-          setData(profileData);
-          setResumeFile(resume);
-          setProfileId(id);
-          setIsSubmitted(true);
-          setProfileExists(true);
-          
-          // Clear selected file after successful submission
-          setSelectedFile(null);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-          
-          // Show success message
-          const action = profileExists ? 'updated' : 'created';
-          setError(null);
-          alert(`✅ Profile ${action} successfully!`);
-          
-          // Force status update immediately
-          setTimeout(() => {
-            updateProfileStatus();
-          }, 100);
-        } else {
-          console.error("❌ Invalid response format:", result);
-          setError('Invalid response from server');
-        }
-      } else {
-        let errorText = '';
-        try {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const errorData = await response.json();
-            errorText = errorData.message || JSON.stringify(errorData);
-          } else {
-            errorText = await response.text();
-          }
-        } catch (e) {
-          errorText = response.statusText || 'Unknown error';
-        }
-        
-        console.error("❌ Error response:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorText
-        });
-        
-        // Handle specific error cases
-        if (response.status === 409) {
-          setError('Profile already exists. Please try updating instead.');
-        } else if (response.status === 404) {
-          setError('Profile not found. Please try creating a new profile.');
-        } else if (response.status === 400) {
-          setError(`Validation Error: ${errorText}`);
-        } else if (response.status === 500) {
-          setError('Server error occurred. Please try again later.');
-        } else {
-          setError(`Error: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
-        }
-      }
-    } catch (error) {
-      console.error("❌ Network error:", error);
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          setError('Request timed out. Please try again.');
-        } else if (error.message.includes('Failed to fetch')) {
-          setError('Unable to connect to server. Please check if the API is running.');
-        } else {
-          setError(`Network error: ${error.message}`);
-        }
-      } else {
-        setError('Network error occurred. Please try again.');
-      }
-    } finally {
-      setLoading(false);
+      await new Promise(res => setTimeout(res, 100));
+    } catch (err) {
+      console.error(`❌ Extension error for ${key}:`, err);
     }
-  };
+  }
+
+  console.log('✅ All available fields sent to extension');
+}
+
+      
+      console.log(`✅ Profile ${action} completed successfully`);
+      
+    } else {
+      // Handle HTTP errors
+      let errorMessage = 'Unknown error occurred';
+      let serverResponse = null;
+      
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          serverResponse = await response.json();
+          errorMessage = serverResponse.message || serverResponse.error || 'Server error';
+        } else {
+          errorMessage = await response.text() || response.statusText;
+        }
+      } catch (parseError) {
+        console.warn('Could not parse error response:', parseError);
+        errorMessage = response.statusText || `HTTP ${response.status}`;
+      }
+      
+      console.error("❌ Error response:", {
+        status: response.status,
+        statusText: response.statusText,
+        errorMessage,
+        serverResponse
+      });
+      
+      // Handle specific HTTP status codes
+      switch (response.status) {
+        case 400:
+          setError(`Validation Error: ${errorMessage}`);
+          break;
+        case 401:
+          setError('Authentication failed. Please login again.');
+          break;
+        case 403:
+          setError('Access denied. You don\'t have permission to perform this action.');
+          break;
+        case 404:
+          if (profileExists) {
+            setError('Profile not found. It may have been deleted. Please create a new profile.');
+            setProfileExists(false);
+            setProfileId(null);
+          } else {
+            setError('API endpoint not found. Please check your connection.');
+          }
+          break;
+        case 409:
+          setError('Profile already exists with this email. Please try updating instead.');
+          break;
+        case 413:
+          setError('File too large. Please upload a smaller resume file.');
+          break;
+        case 422:
+          setError(`Data validation failed: ${errorMessage}`);
+          break;
+        case 429:
+          setError('Too many requests. Please wait a moment and try again.');
+          break;
+        case 500:
+          setError('Server error occurred. Please try again later.');
+          break;
+        case 502:
+        case 503:
+        case 504:
+          setError('Server is temporarily unavailable. Please try again later.');
+          break;
+        default:
+          setError(`Error ${response.status}: ${errorMessage}`);
+      }
+    }
+    
+  } catch (error) {
+    console.error("❌ Network/Request error:", error);
+    
+    // Handle different types of errors
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        setError('Request timed out. Please check your connection and try again.');
+      } else if (error.message.includes('Failed to fetch')) {
+        setError('Unable to connect to server. Please check your internet connection and ensure the API is running.');
+      } else if (error.message.includes('NetworkError')) {
+        setError('Network error occurred. Please check your connection.');
+      } else if (error.message.includes('CORS')) {
+        setError('Cross-origin request blocked. Please contact support.');
+      } else {
+        setError(`Request failed: ${error.message}`);
+      }
+    } else {
+      setError('An unexpected error occurred. Please try again.');
+    }
+  } finally {
+    setLoading(false);
+    console.log("🏁 Profile submission process completed");
+  }
+}, [
+  data,
+  resumeFile,
+  selectedFile,
+  profileExists,
+  profileId,
+  requiredFields,
+  api_baseUrl,
+  updateProfileStatus,
+  fileInputRef
+]
+); 
 
   // Function to check if user can access certain features
   const canAccessFeature = (feature: string): boolean => {
@@ -866,7 +1297,7 @@ const getEmailInitialSafe = () => {
 
                 {/* Input Fields */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {['firstName', 'lastName', 'email/Username', 'experience', 'city', 'age', 'noticePeriod'].map((field) => (
+                  {['firstName', 'lastName', 'email/Username','experience', 'city', 'age', 'noticePeriod'].map((field) => (
                     <div key={field} className="flex flex-col">
                       <label className="mb-2 text-sm font-medium text-black">
                         {field === 'experience' ? 'Experience (Years)' : field === 'noticePeriod' ? 'Notice Period (In Days)' : field.charAt(0).toUpperCase() + field.slice(1)}{' '}
@@ -981,6 +1412,26 @@ const getEmailInitialSafe = () => {
                 >
                   {profileExists ? 'Update Profile' : 'Create Profile'}
                 </button>
+                {/* Extension Sync Button */}
+<SyncButton
+  isExtensionSyncing={isExtensionSyncing}
+  profileStatus={profileStatus}
+  onSync={handleExtensionSync}
+/>
+
+                {extensionSyncStatus && (
+  <div className="mt-4 mx-8 text-sm text-blue-800 bg-blue-100 border border-blue-300 rounded p-3">
+    {isExtensionSyncing ? (
+      <span className="flex items-center gap-2">
+        <span className="animate-spin w-4 h-4 border-b-2 border-blue-600 rounded-full" />
+        Syncing with extension...
+      </span>
+    ) : (
+      extensionSyncStatus
+    )}
+  </div>
+)}
+
               </div>
             )}
 

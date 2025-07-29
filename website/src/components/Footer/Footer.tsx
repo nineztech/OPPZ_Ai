@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
- 
+ import { Mail} from 'lucide-react';
 
 const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,8 +20,9 @@ const Footer: React.FC = () => {
                  <img src="/OPPZ_Ai_Logo.png" alt="Logo" className="w-14 h-14" />
               </div>
               <span className="text-5xl font-semibold">OPPZ Ai</span>
+               
             </div>
-
+            <p className='text-xl text-gray-300'>Apply Smarter, Not Harder – Let OPPZ AI Handle the Job Hunt. Grab the dream Job out of all competition.</p>
             {/* <div className="flex space-x-4">
                
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
@@ -51,9 +52,11 @@ const Footer: React.FC = () => {
               </a>
             </div> */}
 
-            <div className="text-gray-400 text-xl">
-              support@oppzai.com
-            </div>
+            <div className="text-gray-400 text-xl flex items-center space-x-2">
+  <Mail className="w-5 h-5 text-white/50" />
+  <span>support@oppzai.com</span>
+</div>
+
           </div>
 
           {/* Navigation Links */}
@@ -63,7 +66,7 @@ const Footer: React.FC = () => {
               <h3 className="text-white font-semibold mb-4">Product</h3>
               <ul className="space-y-3">
                 <li><a href="/" className="text-gray-400 hover:text-white transition-colors">Home</a></li>
-                <li><a href="/features" className="text-gray-400 hover:text-white transition-colors">Features</a></li>
+                
                 <li><a href="/pricing" className="text-purple-400 hover:text-purple-300 transition-colors">Pricing</a></li>
                 <li><a href="/FAQ" className="text-purple-400 hover:text-purple-300 transition-colors">FAQ</a></li>
                 <li><a href="/Login" className="text-gray-400 hover:text-white transition-colors">Login</a></li>

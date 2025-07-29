@@ -8,7 +8,7 @@ const HowItWorks = () => {
         
         {/* LEFT: Steps Content */}
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">How OPPZ AI Works</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">How OPPZ AI Works?</h2>
 
           <div className="space-y-6">
             <div>
@@ -42,11 +42,11 @@ const HowItWorks = () => {
         </div>
 
         {/* RIGHT: Image */}
-        <div className="flex justify-center md:justify-end">
+        <div className="flex w-[90%] h-full justify-center md:justify-end">
           <img
-            src="/OPPZ_Ai_Logo.png"
+            src="https://media.licdn.com/dms/image/v2/D4D12AQFfanjVkl42TQ/article-cover_image-shrink_600_2000/article-cover_image-shrink_600_2000/0/1684471706770?e=2147483647&v=beta&t=d6wLGqf4IunO_stAlO7AV6ST0yi8kEx0GPYJv3HTjuk"
             alt="How OPPZ AI Works"
-            className="w-full bg-blue-500 max-w-md rounded-xl shadow-2xl"
+            className="w-full   max-w-md rounded-xl shadow-2xl"
           />
         </div>
       </div>

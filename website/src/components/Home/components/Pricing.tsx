@@ -1,4 +1,6 @@
+import Footer from "../../Footer/Footer";
 export const Pricing = () => (
+  <div>
   <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
   <div className="max-w-2xl text-center">
     <h1 className="text-4xl font-bold text-gray-800 mb-4">Subscription Plan</h1>
@@ -18,5 +20,6 @@ export const Pricing = () => (
     {/* Add pricing plans below here */}
   </div>
 </div>
-
+<Footer />
+</div>
 );

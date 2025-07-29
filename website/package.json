@@ -12,6 +12,7 @@
     "@types/react-dom": "^18.2.22",
     "classnames": "^2.5.1",
     "dayjs": "^1.11.13",
+    "fastest-levenshtein": "^1.0.16",
     "jspdf": "^3.0.1",
     "lucide-react": "^0.522.0",
     "react": "^18.2.0",
