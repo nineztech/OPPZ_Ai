@@ -58,7 +58,7 @@ interface ExtensionSyncResult {
 }
 
 // Constants
-const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim';
+const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj';
 const ALLOWED_FILE_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const REQUEST_TIMEOUT = 30000; // 30 seconds
