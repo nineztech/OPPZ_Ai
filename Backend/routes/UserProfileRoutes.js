@@ -66,17 +66,12 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    console.log("📎 Multer filename called");
-    console.log("📎 Original filename:", file.originalname);
-    
-    // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const extension = path.extname(file.originalname);
-    const filename = `resume-${uniqueSuffix}${extension}`;
-    
-    console.log("📎 Generated filename:", filename);
-    cb(null, filename);
-  }
+  console.log("📎 Multer filename called");
+  console.log("📎 Original filename:", file.originalname);
+
+  cb(null, file.originalname); // 🔥 Save the actual filename
+}
+
 });
 
 // File filter to accept only PDF and DOC files
