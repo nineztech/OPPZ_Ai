@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Trash2 } from 'lucide-react';
 
-const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj'; // Replace with your real one
+const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim'; // Replace with your real one
 
 type FilterKey = 'badWords' | 'titleFilterWords' | 'titleSkipWords';
 

@@ -15,7 +15,7 @@ interface RadioConfig {
   updatedAt?: string;
 }
 
-const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj';
+const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim';
 
 const isChromeExtension = () =>
   typeof chrome !== 'undefined' &&

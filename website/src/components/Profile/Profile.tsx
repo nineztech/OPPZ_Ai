@@ -1,6 +1,3 @@
- 
-
-
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Check, UserCog, Upload, User, Save } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
@@ -58,7 +55,7 @@ interface ExtensionSyncResult {
 }
 
 // Constants
-const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj';
+const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim';
 const ALLOWED_FILE_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const REQUEST_TIMEOUT = 30000; // 30 seconds
@@ -373,7 +370,7 @@ const SyncButton: React.FC<{
     <button
       onClick={onSync}
       disabled={isExtensionSyncing || !profileStatus.requiredFieldsFilled}
-      className={`w-full mt-4 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
+      className={`w-18 p-2 mt-4 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
         profileStatus.requiredFieldsFilled && !isExtensionSyncing
           ? 'bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white'
           : 'bg-gray-400 text-gray-700 cursor-not-allowed'

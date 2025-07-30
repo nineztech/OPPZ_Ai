@@ -9,7 +9,7 @@ interface FieldConfig {
   updatedAt?: string;
 }
 
-const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj'; // Replace with your actual extension ID
+const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim'; // Replace with your actual extension ID
 
 const isChromeExtension = () =>
   typeof chrome !== 'undefined' &&
