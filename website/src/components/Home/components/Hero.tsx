@@ -164,10 +164,17 @@ const Home: React.FC = () => {
       </p>
 
       <div className="flex items-center mb-12">
-        <Link to="/Signup" className="border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2">
-          <ArrowRight className="w-5 h-5" />
-          <span>Get Started Free</span>
-        </Link>
+       <Link
+  to="/Signup"
+  className="group border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition-colors flex items-center space-x-2"
+>
+  <ArrowRight
+    size={24}
+    className="transition-transform duration-500 ease-out-in group-hover:rotate-45"
+  />
+  <span>Get Started Free</span>
+</Link>
+
       </div>
 
       {/* Stats */}
@@ -415,13 +422,20 @@ const Home: React.FC = () => {
     className="group mb-12 relative inline-flex items-center justify-center w-80 rounded-full p-[2px] bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500"
   >
     <span className="flex items-center justify-center w-full h-full px-8 py-4 bg-white rounded-full transition-all duration-300 group-hover:bg-gradient-to-r group-hover:from-indigo-600 group-hover:via-purple-600 group-hover:to-blue-500 group-hover:text-white space-x-2">
-      <ArrowRight className="w-5 h-5 transition-transform duration-300 ease-in-out group-hover:translate-x-1" />
+      <ArrowRight
+    size={24}
+    className="transition-transform duration-500 ease-out-in group-hover:rotate-45"
+  />
        Sign-up
     </span>
   </a>
-</div>
+ </div>
 
-      {/* You can add a CTA button or pricing table here */}
+      <div className="text-center text-gray-500">
+        <p className="text-sm mb-2">No credit card required For Now.</p>
+        <p className="text-sm">Join our community of job seekers and let OPPZ AI do the heavy lifting for you!</p>
+      </div>
+
     </div>
 
     {/* Right: Image */}

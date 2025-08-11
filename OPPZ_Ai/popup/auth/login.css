@@ -1,21 +1,44 @@
+.body{
+    background:transparent;
+    
+}
 .login-container {
     width: 300px;
     padding: 20px;
-    background: white;
+    background: linear-gradient(to bottom right, #3b82f6, #8b5cf6, #ec4899);
+    backdrop-filter: blur(12px); /* Same as backdrop-blur-md */
+    -webkit-backdrop-filter: blur(12px); /* Safari support */
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     text-align: center;
+    color: #fff; /* White text for contrast */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.logo_c {
+  display: flex;
+  align-items: center; /* vertically center image and text */
+  gap: 12px; /* space between logo and text */
+  margin-left: 50px;
+  margin-bottom: 20px;
 }
 
 .logo {
-    width: 64px;
-    height: 64px;
-    margin-bottom: 20px;
+  width: 70px; /* adjust size as needed */
+  height: 70px;
 }
 
+.logo_c h1 {
+  font-size: 2rem;
+  color: white; /* or your preferred text color */
+  margin: 0;
+}
+
+
 h2 {
-    color: #333;
+    color: #ffffff;
     margin-bottom: 20px;
+    margin-top: 2%;
 }
 
 .form-group {
@@ -26,7 +49,8 @@ h2 {
 label {
     display: block;
     margin-bottom: 5px;
-    color: #666;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 input {
@@ -47,6 +71,7 @@ input {
     cursor: pointer;
     font-size: 16px;
     margin-top: 10px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .login-button:hover {
@@ -63,11 +88,12 @@ input {
 .signup-text {
     margin-top: 15px;
     font-size: 14px;
-    color: #666;
+    color: #fcf9f9;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .signup-text a, .login-website-text a {
-    color: #0066cc;
+    color: #8ac0f5;
     text-decoration: none;
 }
 
@@ -93,7 +119,7 @@ input {
 .login-website-text {
     margin-top: 10px;
     font-size: 14px;
-    color: #666;
+    color: #faf8f8;
     padding-top: 10px;
     border-top: 1px solid #eee;
 }

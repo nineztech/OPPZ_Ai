@@ -11,11 +11,13 @@ interface RadioConfig {
   placeholderIncludes: string;
   count: number;
   options: RadioOption[];
+  email: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
-const EXTENSION_ID = 'hmjkmddeonifkflejbicnapamlfejdim';
+const EXTENSION_ID = 'edejolphacgbhddjeoomiadkgfaocjcj';
+const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006";
 
 const isChromeExtension = () =>
   typeof chrome !== 'undefined' &&
@@ -27,29 +29,95 @@ const RadioButtonConfigs: React.FC = () => {
   const [updating, setUpdating] = useState<{ [key: string]: boolean }>({});
   const [updated, setUpdated] = useState<{ [key: string]: boolean }>({});
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'updated-newest' | 'updated-oldest'>('newest');
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
-  useEffect(() => {
+  // Function to fetch configs from backend
+  const fetchConfigsFromBackend = async (email: string) => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await fetch(`${api_baseUrl}/api/radiobuttons/get-radioconfigs?email=${encodeURIComponent(email)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setConfigs(data.configs || []);
+      } else {
+        setError(data.message || 'Failed to fetch configurations');
+      }
+    } catch (err) {
+      console.error('Failed to fetch configs from backend:', err);
+      setError('Failed to fetch configurations from server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to sync with extension
+  const syncWithExtension = async (email: string) => {
     if (!isChromeExtension()) return;
 
     chrome.runtime.sendMessage(
       EXTENSION_ID,
       { from: 'website', action: 'getFormControlData' },
-      (response) => {
+      async (response) => {
         if (chrome.runtime.lastError) {
-          console.error('Error:', chrome.runtime.lastError.message);
+          console.error('Extension error:', chrome.runtime.lastError.message);
           return;
         }
 
         if (response?.success) {
           const updatedConfigs = (response.data.radioButtons || []).map((config: RadioConfig) => ({
             ...config,
+            email: email,
             createdAt: config.createdAt ?? new Date().toISOString(),
-            updatedAt: config.updatedAt ?? config.createdAt ?? new Date().toISOString(),
+            updatedAt: config.updatedAt ?? new Date().toISOString(),
           }));
+          
+          // Update local state
           setConfigs(updatedConfigs);
+
+          // Save to backend to keep them in sync
+          try {
+            await fetch(`${api_baseUrl}/api/radiobuttons/save-radioconfigs`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(updatedConfigs)
+            });
+          } catch (err) {
+            console.error('Failed to sync with backend:', err);
+          }
         }
       }
     );
+  };
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      setUserEmail(userData.email);
+
+      // First, try to fetch from backend
+      fetchConfigsFromBackend(userData.email);
+      
+      // Also sync with extension if available
+      syncWithExtension(userData.email);
+    }
   }, []);
 
   const handleChange = (placeholder: string, selectedValue: string) => {
@@ -72,6 +140,7 @@ const RadioButtonConfigs: React.FC = () => {
     setUpdating(prev => ({ ...prev, [placeholder]: true }));
     setUpdated(prev => ({ ...prev, [placeholder]: false }));
 
+    // Update extension if available
     if (isChromeExtension()) {
       chrome.runtime.sendMessage(
         EXTENSION_ID,
@@ -80,23 +149,48 @@ const RadioButtonConfigs: React.FC = () => {
           action: 'updateRadioButtonValue',
           data: { placeholder, value: selectedValue },
         },
-        (response) => {
+        async (response) => {
           if (!response?.success) {
-            console.error('Failed to update radio button');
+            console.error('Extension update failed');
           }
-          setTimeout(() => {
-            setUpdating(prev => ({ ...prev, [placeholder]: false }));
-            setUpdated(prev => ({ ...prev, [placeholder]: true }));
-          }, 800);
         }
       );
     }
+
+    // Update backend
+    const updateBackend = async () => {
+      try {
+        await fetch(`${api_baseUrl}/api/radiobuttons/update-radioconfig`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            placeholderIncludes: placeholder,
+            selectedValue,
+            email: userEmail,
+            updatedAt: new Date().toISOString()
+          })
+        });
+      } catch (err) {
+        console.error('Backend update failed:', err);
+        setError('Failed to update configuration');
+      }
+
+      setTimeout(() => {
+        setUpdating(prev => ({ ...prev, [placeholder]: false }));
+        setUpdated(prev => ({ ...prev, [placeholder]: true }));
+      }, 800);
+    };
+
+    updateBackend();
   };
 
   const handleDelete = (placeholder: string) => {
     const filtered = configs.filter(config => config.placeholderIncludes !== placeholder);
     setConfigs(filtered);
 
+    // Delete from extension if available
     if (isChromeExtension()) {
       chrome.runtime.sendMessage(
         EXTENSION_ID,
@@ -105,14 +199,29 @@ const RadioButtonConfigs: React.FC = () => {
           action: 'deleteRadioButtonConfig',
           data: placeholder,
         },
-        (response) => {
+        async (response) => {
           if (!response?.success) {
-            console.error('Failed to delete radio button config');
+            console.error('Extension delete failed');
           }
         }
       );
     }
+
+    // Delete from backend
+    const deleteFromBackend = async () => {
+      try {
+        await fetch(`${api_baseUrl}/api/radiobuttons/delete-radioconfig/${encodeURIComponent(placeholder)}?email=${encodeURIComponent(userEmail)}`, {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.error('Backend delete failed:', err);
+        setError('Failed to delete configuration');
+      }
+    };
+
+    deleteFromBackend();
   };
+ 
 
   const getSortedConfigs = () => {
     const sortedConfigs = [...configs];
@@ -143,6 +252,36 @@ const RadioButtonConfigs: React.FC = () => {
 
   return (
     <div className="p-6">
+      
+      {/* {userEmail && (
+        <div className="mb-4 p-3 w-full max-w-2xl bg-blue-50 rounded-lg flex justify-between items-center">
+          <p className="text-sm text-blue-700">
+            Radio button configurations for: <span className="font-semibold">{userEmail}</span>
+          </p>
+           
+        </div>
+      )} */}
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{error}</p>
+          <button 
+            onClick={() => setError('')}
+            className="text-red-500 hover:text-red-700 text-sm underline mt-1"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Loading Indicator */}
+      {loading && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-600">Loading configurations...</p>
+        </div>
+      )}
+      
       {/* Filter Controls */}
       <div className="mb-6 flex flex-wrap gap-3 items-center">
         <div className="flex items-center h-12 w-28 border rounded-full gap-2">
@@ -195,7 +334,7 @@ const RadioButtonConfigs: React.FC = () => {
             }`}
           >
             <ArrowUp className="inline w-3 h-3 mr-1" />
-              Initial
+            Initial
           </button>
         </div>
       </div>
@@ -206,14 +345,14 @@ const RadioButtonConfigs: React.FC = () => {
           Showing {sortedConfigs.length} radio button configuration{sortedConfigs.length !== 1 ? 's' : ''}
         </p>
       </div>
+      
 
       {/* Configs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {sortedConfigs.length === 0 ? (
+        {sortedConfigs.length === 0 && !loading ? (
           <p className="text-gray-500 col-span-2 text-center">No radio button configurations found.</p>
         ) : (
           sortedConfigs.map(config => {
-
             return (
               <div
                 key={config.placeholderIncludes}
