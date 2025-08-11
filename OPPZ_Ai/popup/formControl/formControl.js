@@ -1,7 +1,11 @@
-// Enhanced FormManager with better auto-apply integration
+// FIXED: formControl.js - Corrected to match your actual routes
 
 class FormManager {
     constructor() {
+        // Use the production URL as shown in your code
+        // this.API_BASE_URL = 'https://oppzai-production-c5c3.up.railway.app/api';
+        this.API_BASE_URL = 'http://localhost:5006/api/api'; // For development
+        
         this.defaultNullFieldInput = {
             YearsOfExperience: '',
             FirstName: '',
@@ -41,75 +45,426 @@ class FormManager {
             this.setupObserver();
             this.addAutoApplyReadinessIndicator();
             this.setupMessageListeners();
+            this.fetchAndDisplayInputFieldConfigs();
         });
+    }
+
+    // Get authentication headers for API calls
+    async getAuthHeaders() {
+        try {
+            const result = await chrome.storage.local.get(['authToken', 'user']);
+            if (!result.authToken || !result.user) {
+                throw new Error('User not authenticated');
+            }
+            return {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${result.authToken}`
+            };
+        } catch (error) {
+            console.error('Error getting auth headers:', error);
+            throw error;
+        }
+    }
+
+    // Get user email for API calls
+    async getUserEmail() {
+        try {
+            const result = await chrome.storage.local.get(['user']);
+            if (!result.user || !result.user.email) {
+                throw new Error('User email not found');
+            }
+            return result.user.email;
+        } catch (error) {
+            console.error('Error getting user email:', error);
+            throw error;
+        }
+    }
+
+    // FIXED: Fetch input field configurations from backend - matches your exact route
+    async fetchInputFieldConfigsFromBackend() {
+        try {
+            const headers = await this.getAuthHeaders();
+            const email = await this.getUserEmail();
+            
+            console.log('Fetching input field configs for email:', email);
+            
+            // EXACT match to your route: GET /api/inputs/get-inputconfigs
+            const response = await fetch(`${this.API_BASE_URL}/inputs/get-inputconfigs?email=${encodeURIComponent(email)}`, {
+                method: 'GET',
+                headers: headers
+            });
+
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication expired. Please log in again.');
+                }
+                if (response.status === 404) {
+                    throw new Error('API endpoint not found. Please check if the server is running correctly.');
+                }
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const responseText = await response.text();
+                console.error('Non-JSON response:', responseText);
+                throw new Error('Server returned non-JSON response');
+            }
+
+            const data = await response.json();
+            console.log('Fetched input field configs:', data);
+
+            // Handle different possible response structures
+            if (data.success !== undefined) {
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to fetch configurations');
+                }
+                return data.configs || data.data || [];
+            } else if (Array.isArray(data)) {
+                return data;
+            } else if (data.inputConfigs) {
+                return data.inputConfigs;
+            } else {
+                return data.configs || [];
+            }
+
+        } catch (error) {
+            console.error('Error fetching input field configs:', error);
+            this.showErrorMessage('Failed to fetch configurations from server: ' + error.message);
+            return this.getLocalInputFieldConfigs();
+        }
+    }
+
+    // Get local input field configs as fallback
+    async getLocalInputFieldConfigs() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['inputFieldConfigs'], (result) => {
+                resolve(result.inputFieldConfigs || []);
+            });
+        });
+    }
+
+    // FIXED: Save input field configurations to backend - matches your exact route
+    async saveInputFieldConfigsToBackend(configs) {
+        try {
+            const headers = await this.getAuthHeaders();
+            const email = await this.getUserEmail();
+            
+            // Add email to each config
+            const configsWithEmail = configs.map(config => ({
+                ...config,
+                email: email,
+                updatedAt: new Date().toISOString()
+            }));
+            
+            console.log('Saving input field configs to backend:', configsWithEmail);
+            
+            // EXACT match to your route: POST /api/inputs/save-inputconfigs
+            const response = await fetch(`${this.API_BASE_URL}/inputs/save-inputconfigs`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(configsWithEmail)
+            });
+
+            console.log('Save response status:', response.status);
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication expired. Please log in again.');
+                }
+                if (response.status === 404) {
+                    throw new Error('Save API endpoint not found. Please check if the server is running correctly.');
+                }
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log('Saved input field configs response:', data);
+
+            // Handle different possible response structures
+            if (data.success !== undefined && !data.success) {
+                throw new Error(data.message || 'Failed to save configurations');
+            }
+
+            this.showSuccessMessage('Configurations saved successfully');
+            return data;
+
+        } catch (error) {
+            console.error('Error saving input field configs:', error);
+            this.showErrorMessage('Failed to save to server: ' + error.message);
+            
+            // Fallback to local storage
+            await this.saveLocalInputFieldConfigs(configs);
+            throw error;
+        }
+    }
+
+    // Save to local storage as fallback
+    async saveLocalInputFieldConfigs(configs) {
+        return new Promise((resolve) => {
+            chrome.storage.local.set({ 'inputFieldConfigs': configs }, resolve);
+        });
+    }
+
+    // FIXED: Update a single input field configuration - matches your exact route
+    async updateInputFieldConfigInBackend(placeholder, selectedValue) {
+        try {
+            const headers = await this.getAuthHeaders();
+            const email = await this.getUserEmail();
+            
+            const updateData = {
+                placeholderIncludes: placeholder,
+                selectedValue: selectedValue,
+                email: email,
+                updatedAt: new Date().toISOString()
+            };
+            
+            console.log('Updating input field config:', updateData);
+            
+            // EXACT match to your route: PUT /api/inputs/update-inputconfig
+            const response = await fetch(`${this.API_BASE_URL}/inputs/update-inputconfig`, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(updateData)
+            });
+
+            console.log('Update response status:', response.status);
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication expired. Please log in again.');
+                }
+                if (response.status === 404) {
+                    throw new Error('Update API endpoint not found. Please check if the server is running correctly.');
+                }
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log('Updated input field config response:', data);
+
+            if (data.success !== undefined && !data.success) {
+                throw new Error(data.message || 'Failed to update configuration');
+            }
+
+            return data.config || data;
+
+        } catch (error) {
+            console.error('Error updating input field config:', error);
+            this.showErrorMessage('Failed to update: ' + error.message);
+            throw error;
+        }
+    }
+
+    // FIXED: Delete input field configuration from backend - matches your exact route
+    async deleteInputFieldConfigFromBackend(placeholder) {
+        try {
+            const headers = await this.getAuthHeaders();
+            const email = await this.getUserEmail();
+            
+            console.log('Deleting input field config:', placeholder);
+            
+            // EXACT match to your route: DELETE /api/inputs/delete-inputconfig/:placeholder
+            const deleteUrl = `${this.API_BASE_URL}/inputs/delete-inputconfig/${encodeURIComponent(placeholder)}?email=${encodeURIComponent(email)}`;
+            
+            const response = await fetch(deleteUrl, {
+                method: 'DELETE',
+                headers: headers
+            });
+
+            console.log('Delete response status:', response.status);
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication expired. Please log in again.');
+                }
+                if (response.status === 404) {
+                    throw new Error('Delete API endpoint not found. Please check if the server is running correctly.');
+                }
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log('Deleted input field config response:', data);
+
+            if (data.success !== undefined && !data.success) {
+                throw new Error(data.message || 'Failed to delete configuration');
+            }
+
+            this.showSuccessMessage('Configuration deleted successfully');
+            return data;
+
+        } catch (error) {
+            console.error('Error deleting input field config:', error);
+            this.showErrorMessage('Failed to delete: ' + error.message);
+            throw error;
+        }
+    }
+
+    // Main function to fetch and display input field configurations
+    async fetchAndDisplayInputFieldConfigs() {
+        try {
+            this.showLoadingMessage('Loading configurations...');
+            
+            // Check if user is authenticated
+            const result = await chrome.storage.local.get(['authToken', 'user']);
+            if (!result.authToken || !result.user) {
+                this.showErrorMessage('Please log in to load your configurations');
+                return;
+            }
+
+            // Fetch configurations from backend
+            const configurations = await this.fetchInputFieldConfigsFromBackend();
+            
+            // Update local storage with fetched data
+            await chrome.storage.local.set({ 'inputFieldConfigs': configurations });
+            
+            // Display the configurations
+            this.displayAndUpdateInputFieldConfig(configurations);
+            
+            this.hideLoadingMessage();
+
+        } catch (error) {
+            console.error('Error in fetchAndDisplayInputFieldConfigs:', error);
+            this.hideLoadingMessage();
+            
+            // Try to load from local storage as fallback
+            try {
+                const localConfigs = await this.getLocalInputFieldConfigs();
+                this.displayAndUpdateInputFieldConfig(localConfigs);
+                this.showErrorMessage('Loaded from local storage. Server error: ' + error.message);
+            } catch (localError) {
+                this.showErrorMessage('Failed to load configurations: ' + error.message);
+            }
+        }
     }
     
     displayAndUpdateInputFieldConfig(configurations) {
-    const configurationsDiv = document.getElementById('configurations');
-    if (!configurationsDiv) return;
+        const configurationsDiv = document.getElementById('configurations');
+        if (!configurationsDiv) return;
 
-    configurationsDiv.innerHTML = '';
+        configurationsDiv.innerHTML = '';
 
-    if (configurations && configurations.length > 0) {
-      const sortedConfigurations = configurations.sort((a, b) => {
-        const countA = a.count || 0;
-        const countB = b.count || 0;
-        return countB - countA;
-      });
+        if (configurations && configurations.length > 0) {
+            const sortedConfigurations = configurations.sort((a, b) => {
+                const countA = a.count || 0;
+                const countB = b.count || 0;
+                return countB - countA;
+            });
 
-      sortedConfigurations.forEach(config => {
-        const configContainer = document.createElement('div');
-        configContainer.className = 'config-container';
-        configContainer.id = `config-${config.placeholderIncludes}-container`;
+            sortedConfigurations.forEach(config => {
+                const configContainer = document.createElement('div');
+                configContainer.className = 'config-container';
+                configContainer.id = `config-${config.placeholderIncludes}-container`;
 
-        configContainer.innerHTML = `
-          <h3>${config.placeholderIncludes}</h3>
-          <div class="config-details">
-            <strong>Current Value:</strong> ${config.defaultValue || '—'}<br>
-            <strong>Count:</strong> ${config.count || 0}
-          </div>
-        `;
+                configContainer.innerHTML = `
+                    <h3>${config.placeholderIncludes}</h3>
+                    <div class="config-details">
+                        <strong>Current Value:</strong> ${config.defaultValue || '—'}<br>
+                        <strong>Count:</strong> ${config.count || 0}
+                    </div>
+                `;
 
-        const inputField = document.createElement('input');
-        inputField.type = 'text';
-        inputField.value = config.defaultValue || '';
-        inputField.className = 'config-input';
+                const inputField = document.createElement('input');
+                inputField.type = 'text';
+                inputField.value = config.defaultValue || '';
+                inputField.className = 'config-input';
 
-        const updateButton = document.createElement('button');
-        updateButton.textContent = 'Update';
-        updateButton.className = 'update-button';
-        updateButton.addEventListener('click', () => {
-          chrome.runtime.sendMessage({
-            action: 'updateInputFieldValue',
-            data: {
-              placeholder: config.placeholderIncludes,
-              value: inputField.value.trim()
-            }
-          }, () => {
-            alert('Updated!');
-          });
-        });
+                const updateButton = document.createElement('button');
+                updateButton.textContent = 'Update';
+                updateButton.className = 'update-button';
+                updateButton.addEventListener('click', async () => {
+                    try {
+                        await this.updateInputFieldConfigInBackend(config.placeholderIncludes, inputField.value.trim());
+                        this.showSuccessMessage('Configuration updated successfully');
+                        // Refresh the display
+                        this.fetchAndDisplayInputFieldConfigs();
+                    } catch (error) {
+                        this.showErrorMessage('Update failed: ' + error.message);
+                    }
+                });
 
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Delete';
-        deleteButton.className = 'delete-button';
-        deleteButton.addEventListener('click', () => {
-          chrome.runtime.sendMessage({
-            action: 'deleteInputFieldConfig',
-            data: config.placeholderIncludes
-          }, () => {
-            configContainer.remove();
-          });
-        });
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'delete-button';
+                deleteButton.addEventListener('click', async () => {
+                    if (confirm(`Are you sure you want to delete the configuration for "${config.placeholderIncludes}"?`)) {
+                        try {
+                            await this.deleteInputFieldConfigFromBackend(config.placeholderIncludes);
+                            configContainer.remove();
+                            this.showSuccessMessage('Configuration deleted successfully');
+                        } catch (error) {
+                            this.showErrorMessage('Delete failed: ' + error.message);
+                        }
+                    }
+                });
 
-        configContainer.appendChild(inputField);
-        configContainer.appendChild(updateButton);
-        configContainer.appendChild(deleteButton);
+                configContainer.appendChild(inputField);
+                configContainer.appendChild(updateButton);
+                configContainer.appendChild(deleteButton);
 
-        configurationsDiv.appendChild(configContainer);
-      });
+                configurationsDiv.appendChild(configContainer);
+            });
+        } else {
+            const noConfigsMessage = document.createElement('div');
+            noConfigsMessage.innerHTML = `
+                <p style="text-align: center; color: #666; font-style: italic;">
+                    No input field configurations found.<br>
+                    Visit LinkedIn job pages to automatically create configurations.
+                </p>
+            `;
+            configurationsDiv.appendChild(noConfigsMessage);
+        }
     }
-  }
+
+    // Utility methods for showing messages
+    showLoadingMessage(message) {
+        const messageElement = this.getOrCreateMessageElement();
+        messageElement.innerHTML = `<div style="color: #0066cc;">🔄 ${message}</div>`;
+    }
+
+    hideLoadingMessage() {
+        const messageElement = document.getElementById('loading-message');
+        if (messageElement) {
+            messageElement.style.display = 'none';
+        }
+    }
+
+    showErrorMessage(message) {
+        const messageElement = this.getOrCreateMessageElement();
+        messageElement.innerHTML = `<div style="color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 4px; margin: 10px 0;">❌ ${message}</div>`;
+    }
+
+    showSuccessMessage(message) {
+        const messageElement = this.getOrCreateMessageElement();
+        messageElement.innerHTML = `<div style="color: #28a745; background: #d4edda; padding: 10px; border-radius: 4px; margin: 10px 0;">✅ ${message}</div>`;
+        // Auto-hide success messages after 3 seconds
+        setTimeout(() => this.hideLoadingMessage(), 3000);
+    }
+
+    getOrCreateMessageElement() {
+        let messageElement = document.getElementById('loading-message');
+        if (!messageElement) {
+            messageElement = document.createElement('div');
+            messageElement.id = 'loading-message';
+            const configurationsDiv = document.getElementById('configurations');
+            if (configurationsDiv && configurationsDiv.parentNode) {
+                configurationsDiv.parentNode.insertBefore(messageElement, configurationsDiv);
+            } else {
+                document.body.appendChild(messageElement);
+            }
+        }
+        messageElement.style.display = 'block';
+        return messageElement;
+    }
 
     // Setup message listeners for communication with popup
     setupMessageListeners() {
@@ -213,7 +568,6 @@ class FormManager {
                 this.updateSyncInfo(messageElement, syncedFields.length, filledCount);
                 chrome.storage.local.set({ 'autoApplyReady': true });
                 
-            
                 // Add auto-apply test button
                 this.addAutoApplyTestButton(messageElement);
                 
@@ -301,11 +655,9 @@ class FormManager {
                 indicator.style.background = '#e8f5e8';
                 indicator.style.borderColor = '#4caf50';
                 
-                // Add event listener to the button
                 const gotoButton = indicator.querySelector('#goto-popup-button');
                 if (gotoButton) {
                     gotoButton.addEventListener('click', () => {
-                        // Open popup or navigate to LinkedIn
                         chrome.tabs.create({ url: 'https://www.linkedin.com/jobs/search/' });
                     });
                 }
@@ -322,7 +674,6 @@ class FormManager {
                 indicator.style.background = '#ffeaea';
                 indicator.style.borderColor = '#f44336';
                 
-                // Add event listener to login button
                 const loginButton = indicator.querySelector('#login-button');
                 if (loginButton) {
                     loginButton.addEventListener('click', () => {
@@ -448,8 +799,6 @@ class FormManager {
             existingSyncInfo.remove();
         }
         
-         
-
         const syncInfo = document.createElement('div');
         syncInfo.className = 'sync-info';
         syncInfo.style.cssText = `
@@ -729,6 +1078,60 @@ class FormManager {
                 transform: translateY(-1px);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
+            
+            .config-container {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 15px;
+                background: #f9f9f9;
+            }
+            
+            .config-container h3 {
+                margin: 0 0 10px 0;
+                color: #333;
+            }
+            
+            .config-details {
+                margin-bottom: 10px;
+                font-size: 14px;
+                color: #666;
+            }
+            
+            .config-input {
+                width: 100%;
+                padding: 8px;
+                margin-bottom: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
+            
+            .update-button, .delete-button {
+                padding: 8px 15px;
+                margin-right: 10px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            
+            .update-button {
+                background: #007bff;
+                color: white;
+            }
+            
+            .update-button:hover {
+                background: #0056b3;
+            }
+            
+            .delete-button {
+                background: #dc3545;
+                color: white;
+            }
+            
+            .delete-button:hover {
+                background: #c82333;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -748,3 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = FormManager;
 }
+
+// Initialize the form manager
+const formManager = new FormManager();
+window.formManager = formManager; // 👈 Make it accessible globally

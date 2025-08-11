@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addTitleSkipButton = document.getElementById('add-title-skip-button');
     
     const isDuplicate = (word, words) => {
-        if (words.some(w => w.toLowerCase() === word.toLowerCase())){
+        if (words && words.some(w => w.toLowerCase() === word.toLowerCase())){
             alert("Oops! This word is already in your filter. Try adding a new one!");
             return true;
         }
@@ -32,16 +32,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     badWordsToggle.addEventListener('change', () => {
         chrome.storage.local.set({ badWordsEnabled: badWordsToggle.checked });
+        notifyWebsiteOfChanges();
     });
     
     titleFilterToggle.addEventListener('change', () => {
         chrome.storage.local.set({ titleFilterEnabled: titleFilterToggle.checked });
+        notifyWebsiteOfChanges();
     });
     
     titleSkipToggle.addEventListener('change', () => {
         chrome.storage.local.set({ titleSkipEnabled: titleSkipToggle.checked });
+        notifyWebsiteOfChanges();
     });
-    
     
     function loadBadWords() {
         chrome.storage.local.get('badWords', (result) => {
@@ -51,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    
     function loadTitleFilter() {
         chrome.storage.local.get('titleFilterWords', (result) => {
             const titleFilterWords = result?.titleFilterWords || [];
@@ -59,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
             titleFilterWords.forEach((word, index) => addWordItem(word, index, titleFilterContainer, 'titleFilterWords'));
         });
     }
-    
     
     function loadTitleSkip() {
         chrome.storage.local.get('titleSkipWords', (result) => {
@@ -69,9 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    
     function addWordItem(word, index, container, filterType) {
-        
         const wordItem = document.createElement('div');
         wordItem.className = 'word-item';
         
@@ -95,9 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const newWord = newBadWordInput.value.trim();
         if (newWord) {
             chrome.storage.local.get('badWords', (result) => {
-                if (!isDuplicate(newWord, result.badWords)) {
+                if (!isDuplicate(newWord, result.badWords || [])) {
                     const updatedWords = [...(result.badWords || []), newWord];
-                    chrome.storage.local.set({ badWords: updatedWords }, loadBadWords);
+                    chrome.storage.local.set({ badWords: updatedWords }, () => {
+                        loadBadWords();
+                        notifyWebsiteOfChanges();
+                    });
                 }
                 newBadWordInput.value = '';
             });
@@ -108,29 +109,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const newWord = newTitleFilterInput.value.trim();
         if (newWord) {
             chrome.storage.local.get('titleFilterWords', (result) => {
-                if (!isDuplicate(newWord, result.titleFilterWords)) {
+                if (!isDuplicate(newWord, result.titleFilterWords || [])) {
                     const updatedWords = [...(result.titleFilterWords || []), newWord];
-                    chrome.storage.local.set({ titleFilterWords: updatedWords }, loadTitleFilter);
+                    chrome.storage.local.set({ titleFilterWords: updatedWords }, () => {
+                        loadTitleFilter();
+                        notifyWebsiteOfChanges();
+                    });
                 }
                 newTitleFilterInput.value = '';
             });
         }
     });
     
-    
     addTitleSkipButton.addEventListener('click', () => {
         const newWord = newTitleSkipInput.value.trim();
         if (newWord) {
             chrome.storage.local.get('titleSkipWords', (result) => {
-                if (!isDuplicate(newWord, result.titleSkipWords)) {
+                if (!isDuplicate(newWord, result.titleSkipWords || [])) {
                     const updatedWords = [...(result.titleSkipWords || []), newWord];
-                    chrome.storage.local.set({ titleSkipWords: updatedWords }, loadTitleSkip);
+                    chrome.storage.local.set({ titleSkipWords: updatedWords }, () => {
+                        loadTitleSkip();
+                        notifyWebsiteOfChanges();
+                    });
                 }
                 newTitleSkipInput.value = '';
             });
         }
     });
-    
     
     function deleteWord(index, filterType) {
         const key = {
@@ -145,10 +150,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (filterType === 'badWords') loadBadWords();
                 else if (filterType === 'titleFilterWords') loadTitleFilter();
                 else if (filterType === 'titleSkipWords') loadTitleSkip();
+                notifyWebsiteOfChanges();
             });
         });
     }
-    
     
     function updateWord(index, newWord, filterType) {
         const key = {
@@ -159,14 +164,143 @@ document.addEventListener('DOMContentLoaded', () => {
         
         chrome.storage.local.get(key, (result) => {
             const updatedWords = [...(result[key] || [])];
-            updatedWords[index] = newWord;
-            chrome.storage.local.set({ [key]: updatedWords });
+            updatedWords[index] = newWord.trim();
+            chrome.storage.local.set({ [key]: updatedWords }, () => {
+                notifyWebsiteOfChanges();
+            });
         });
     }
     
+    // NEW: Function to notify website of changes
+    function notifyWebsiteOfChanges() {
+        // This will notify any listening tabs about filter changes
+        chrome.tabs.query({}, (tabs) => {
+            tabs.forEach(tab => {
+                if (tab.url && tab.url.includes('your-website-domain.com')) {
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'filterSettingsUpdated',
+                        timestamp: Date.now()
+                    }).catch(() => {
+                        // Ignore errors for tabs that don't have the content script
+                    });
+                }
+            });
+        });
+    }
     
+    // Initialize everything
     initializeToggles();
     loadBadWords();
     loadTitleFilter();
     loadTitleSkip();
 });
+
+// ✅ NEW: Add message listener for website communication
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('Extension received message:', request);
+    
+    try {
+        // Handle different message types from website
+        switch (request.action) {
+            case 'getFilterSettings':
+                // Get all filter settings and send back to website
+                chrome.storage.local.get([
+                    'badWords', 'titleFilterWords', 'titleSkipWords',
+                    'badWordsEnabled', 'titleFilterEnabled', 'titleSkipEnabled'
+                ], (result) => {
+                    console.log('Sending filter settings to website:', result);
+                    sendResponse({
+                        success: true,
+                        badWords: result.badWords || [],
+                        titleFilterWords: result.titleFilterWords || [],
+                        titleSkipWords: result.titleSkipWords || [],
+                        badWordsEnabled: result.badWordsEnabled ?? true,
+                        titleFilterEnabled: result.titleFilterEnabled ?? true,
+                        titleSkipEnabled: result.titleSkipEnabled ?? true
+                    });
+                });
+                return true; // Keep response channel open
+                
+            case 'updateFilterSetting':
+                // Update specific filter setting from website
+                const { key, value } = request;
+                console.log('Updating filter setting:', key, value);
+                
+                chrome.storage.local.set({ [key]: value }, () => {
+                    console.log('Filter setting updated:', key, value);
+                    
+                    // Refresh UI if this popup is open
+                    refreshUI(key);
+                    
+                    sendResponse({
+                        success: true,
+                        message: `Updated ${key} successfully`
+                    });
+                });
+                return true; // Keep response channel open
+                
+            case 'ping':
+                // Simple ping to test connection
+                sendResponse({
+                    success: true,
+                    message: 'Extension is alive!',
+                    timestamp: Date.now()
+                });
+                return false;
+                
+            default:
+                console.warn('Unknown action:', request.action);
+                sendResponse({
+                    success: false,
+                    error: 'Unknown action: ' + request.action
+                });
+                return false;
+        }
+    } catch (error) {
+        console.error('Error handling message:', error);
+        sendResponse({
+            success: false,
+            error: error.message
+        });
+        return false;
+    }
+});
+
+// ✅ NEW: Function to refresh UI when settings change from website
+function refreshUI(changedKey) {
+    try {
+        switch (changedKey) {
+            case 'badWords':
+                if (typeof loadBadWords === 'function') loadBadWords();
+                break;
+            case 'titleFilterWords':
+                if (typeof loadTitleFilter === 'function') loadTitleFilter();
+                break;
+            case 'titleSkipWords':
+                if (typeof loadTitleSkip === 'function') loadTitleSkip();
+                break;
+            case 'badWordsEnabled':
+            case 'titleFilterEnabled':
+            case 'titleSkipEnabled':
+                if (typeof initializeToggles === 'function') initializeToggles();
+                break;
+        }
+    } catch (error) {
+        console.error('Error refreshing UI:', error);
+    }
+}
+
+// ✅ NEW: Listen for storage changes from any source
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local') {
+        console.log('Storage changed:', changes);
+        
+        // Refresh relevant UI components
+        Object.keys(changes).forEach(key => {
+            refreshUI(key);
+        });
+    }
+});
+
+// ✅ NEW: Add debugging helper
+console.log('OPPZ Extension filter settings script loaded');

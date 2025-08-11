@@ -1,3 +1,4 @@
+// Fixed Content Script with proper filter integration
 let defaultFields = {
   YearsOfExperience: "",
   City: "",
@@ -36,6 +37,54 @@ async function stopScript() {
     console.error("Error in stopScript:", error);
   }
   prevSearchValue = "";
+}
+
+// ✅ FIXED: Get filter settings with proper error handling
+async function getFilterSettings() {
+  try {
+    const result = await new Promise((resolve, reject) => {
+      chrome.storage.local.get([
+        'badWords',
+        'titleFilterWords', 
+        'titleSkipWords',
+        'badWordsEnabled',
+        'titleFilterEnabled', 
+        'titleSkipEnabled'
+      ], (data) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+
+    console.log('🔧 Raw filter settings from storage:', result);
+    
+    // Set defaults for missing values
+    const settings = {
+      badWords: result.badWords || [],
+      titleFilterWords: result.titleFilterWords || [],
+      titleSkipWords: result.titleSkipWords || [],
+      badWordsEnabled: result.badWordsEnabled !== undefined ? result.badWordsEnabled : true,
+      titleFilterEnabled: result.titleFilterEnabled !== undefined ? result.titleFilterEnabled : true,
+      titleSkipEnabled: result.titleSkipEnabled !== undefined ? result.titleSkipEnabled : true
+    };
+
+    console.log('🔧 Processed filter settings:', settings);
+    return settings;
+  } catch (error) {
+    console.error('❌ Error getting filter settings:', error);
+    // Return safe defaults
+    return {
+      badWords: [],
+      titleFilterWords: [],
+      titleSkipWords: [],
+      badWordsEnabled: true,
+      titleFilterEnabled: true,
+      titleSkipEnabled: true
+    };
+  }
 }
 
 async function startScript() {
@@ -96,13 +145,15 @@ async function clickDoneIfExist() {
   }
 }
 
-async function clickJob(listItem, companyName, jobTitle, badWordsEnabled) {
+// ✅ FIXED: Updated clickJob function with proper filter settings
+async function clickJob(listItem, companyName, jobTitle, filterSettings) {
   return new Promise(async (resolve) => {
     if (!(await checkAndPrepareRunState())) {
       resolve(null);
       return;
     }
-    if (badWordsEnabled) {
+    
+    if (filterSettings.badWordsEnabled) {
       const jobDetailsElement = document.querySelector(
         '[class*="jobs-box__html-content"]'
       );
@@ -110,8 +161,10 @@ async function clickJob(listItem, companyName, jobTitle, badWordsEnabled) {
         const jobContentText = jobDetailsElement.textContent
           .toLowerCase()
           .trim();
-        const response = await chrome.storage.local.get(["badWords"]);
-        const badWords = response?.badWords;
+        
+        const badWords = filterSettings.badWords || [];
+        console.log('🔍 Checking bad words:', badWords);
+        
         if (badWords?.length > 0) {
           let matchedBadWord = null;
           for (const badWord of badWords) {
@@ -125,15 +178,14 @@ async function clickJob(listItem, companyName, jobTitle, badWordsEnabled) {
             }
           }
           if (matchedBadWord) {
+            console.log(`🚫 Job rejected due to bad word: "${matchedBadWord}"`);
             resolve(null);
             return;
           }
         }
-        await runFindEasyApply(jobTitle, companyName);
-        resolve(null);
-        return;
       }
     }
+    
     await runFindEasyApply(jobTitle, companyName);
     resolve(null);
   });
@@ -147,18 +199,18 @@ async function performInputFieldChecks() {
     ]);
 
     const questionContainers = document.querySelectorAll(".fb-dash-form-element");
-    
+
     for (const container of questionContainers) {
       if (!(await checkAndPrepareRunState())) return;
 
-      const label = container.querySelector(".artdeco-text-input--label") || 
+      const label = container.querySelector(".artdeco-text-input--label") ||
                    getElementsByXPath({ context: container, xpath: ".//label" })?.[0];
       const inputField = container.querySelector('input:not([type="hidden"]), textarea');
 
       if (!label || !inputField) continue;
 
       const labelText = label.textContent.trim();
-      
+
       // Handle checkbox fields first
       if (inputField.type === "checkbox") {
         if (labelText.toLowerCase().includes("terms")) {
@@ -183,21 +235,16 @@ async function performInputFieldChecks() {
         continue;
       }
 
-      // Handle empty fields
+      // If field is still empty, use default value "1"
       if (!inputField.value.trim()) {
-        const isStopScript = await chrome.storage.local.get("stopIfNotExistInFormControl")
-          .then(r => r.stopIfNotExistInFormControl);
-        
-        if (isStopScript) {
-          await stopScript();
-          alert(`Field with label "${labelText}" is not filled. Please fill it in the form control settings.`);
-          return;
-        }
-        
-        // Update config for future use
+        const defaultFallbackValue = "1";
+        await fillField(inputField, defaultFallbackValue);
+
+        // Optionally update config for future use
         await chrome.runtime.sendMessage({
           action: "updateInputFieldConfigsInStorage",
-          data: labelText
+          data: labelText,
+          defaultValue: defaultFallbackValue
         });
       }
     }
@@ -205,6 +252,7 @@ async function performInputFieldChecks() {
     console.error("performInputFieldChecks error:", error);
   }
 }
+
 
 async function fillField(field, value) {
   if (field.matches('[role="combobox"]')) {
@@ -226,6 +274,71 @@ async function performFillForm(inputField) {
 
   inputField.dispatchEvent(new Event("change", { bubbles: true }));
   await addDelay(200);
+}
+
+// ✅ FIXED: Enhanced job title filtering logic
+function shouldSkipJobByTitle(jobTitle, filterSettings) {
+  if (!jobTitle || typeof jobTitle !== 'string') {
+    console.warn('⚠️ Invalid job title provided for filtering');
+    return false;
+  }
+
+  const normalizedJobTitle = jobTitle.toLowerCase().trim();
+  console.log('🔍 Filtering job title:', normalizedJobTitle);
+  console.log('🔧 Filter settings:', filterSettings);
+
+  // SKIP LOGIC - if enabled and has skip words
+  if (filterSettings.titleSkipEnabled) {
+    const skipWords = filterSettings.titleSkipWords || [];
+    const cleanedSkipWords = skipWords
+      .filter(word => word && typeof word === 'string')
+      .map(word => word.trim().toLowerCase())
+      .filter(word => word.length > 0);
+    
+    console.log('🚫 Skip words to check:', cleanedSkipWords);
+    
+    if (cleanedSkipWords.length > 0) {
+      const matchedSkipWord = cleanedSkipWords.find(word => 
+        normalizedJobTitle.includes(word)
+      );
+      
+      if (matchedSkipWord) {
+        console.log(`⏩ SKIPPING job "${jobTitle}" due to skip word: "${matchedSkipWord}"`);
+        return true;
+      }
+    }
+  } else {
+    console.log('🔧 Title skip is disabled');
+  }
+
+  // FILTER LOGIC - if enabled and has filter words
+  if (filterSettings.titleFilterEnabled) {
+    const filterWords = filterSettings.titleFilterWords || [];
+    const cleanedFilterWords = filterWords
+      .filter(word => word && typeof word === 'string')
+      .map(word => word.trim().toLowerCase())
+      .filter(word => word.length > 0);
+    
+    console.log('✅ Filter words to check:', cleanedFilterWords);
+    
+    if (cleanedFilterWords.length > 0) {
+      const matchedFilterWord = cleanedFilterWords.some(word => 
+        normalizedJobTitle.includes(word)
+      );
+      
+      if (!matchedFilterWord) {
+        console.log(`⏩ SKIPPING job "${jobTitle}" - does not match any title filter`);
+        return true;
+      } else {
+        console.log(`✅ Job "${jobTitle}" matches filter requirements`);
+      }
+    }
+  } else {
+    console.log('🔧 Title filter is disabled');
+  }
+
+  console.log(`✅ Job "${jobTitle}" passed all filters`);
+  return false;
 }
 
 async function performRadioButtonChecks() {
@@ -628,7 +741,6 @@ async function runApplyModel() {
   }
 }
 
-
 const savedJobsCache = new Set();
 
 async function runFindEasyApply(jobTitle, companyName) {
@@ -674,8 +786,6 @@ async function runFindEasyApply(jobTitle, companyName) {
     resolve(null);
   });
 }
-
-
 
 let currentPage = "";
 
@@ -893,11 +1003,14 @@ async function goToNextPage() {
   }
 }
 
+// ✅ FIXED: Main runScript function with proper filter integration
 async function runScript() {
   try {
+    console.log("🔥 runScript triggered");
+
     await addDelay(3000);
     if (!chrome || !chrome.runtime) {
-      console.error("Extension context invalidated");
+      console.error("❌ Extension context invalidated");
       return;
     }
 
@@ -913,11 +1026,6 @@ async function runScript() {
     await fillSearchFieldIfEmpty();
     if (!(await checkAndPrepareRunState())) return;
 
-    if (!chrome || !chrome.runtime) {
-      console.error("Extension context invalidated");
-      return;
-    }
-
     await chrome.storage.local.set({ autoApplyRunning: true });
 
     const fieldsComplete = await checkAndPromptFields();
@@ -925,8 +1033,8 @@ async function runScript() {
       await chrome.runtime.sendMessage({ action: "openDefaultInputPage" });
       return;
     }
-    const limitReached = await checkLimitReached();
 
+    const limitReached = await checkLimitReached();
     if (limitReached) {
       const feedbackMessageElement = document.querySelector(
         ".artdeco-inline-feedback__message"
@@ -935,19 +1043,9 @@ async function runScript() {
       return;
     }
 
-    const {
-      titleSkipEnabled,
-      titleFilterEnabled,
-      badWordsEnabled,
-      titleFilterWords,
-      titleSkipWords,
-    } = await chrome.storage.local.get([
-      "titleSkipEnabled",
-      "titleFilterEnabled",
-      "badWordsEnabled",
-      "titleFilterWords",
-      "titleSkipWords",
-    ]);
+    // ✅ FIXED: Get filter settings using the new function
+    const filterSettings = await getFilterSettings();
+    console.log("🔧 Filter settings loaded:", filterSettings);
 
     const listItems = await waitForElements({
       elementOrSelector: ".scaffold-layout__list-item",
@@ -956,25 +1054,29 @@ async function runScript() {
     for (const listItem of listItems) {
       if (!(await checkAndPrepareRunState())) return;
       await addDelay(300);
-      let canClickToJob = true;
-      if (!(await checkAndPrepareRunState())) return;
+
       await closeApplicationSentModal();
+
       const linksElements = await waitForElements({
-        elementOrSelector:
-          ".artdeco-entity-lockup__title .job-card-container__link",
+        elementOrSelector: ".artdeco-entity-lockup__title .job-card-container__link",
         timeout: 5000,
         contextNode: listItem,
       });
       const jobNameLink = linksElements?.[0];
+
       if (!jobNameLink) {
-        canClickToJob = false;
-      } else {
-        jobNameLink?.scrollIntoView({ behavior: "smooth", block: "center" });
+        console.warn("⚠️ No job link found");
+        continue;
       }
+
+      jobNameLink.scrollIntoView({ behavior: "smooth", block: "center" });
+
       const jobFooter = listItem.querySelector('[class*="footer"]');
       if (jobFooter && jobFooter.textContent.trim() === "Applied") {
-        canClickToJob = false;
+        console.log("⛔ Already applied to job");
+        continue;
       }
+
       const companyNames = listItem.querySelectorAll('[class*="subtitle"]');
       const companyNamesArray = Array.from(companyNames).map((el) =>
         el.textContent.trim()
@@ -984,48 +1086,33 @@ async function runScript() {
       const jobTitle = getJobTitle(jobNameLink);
 
       if (!jobTitle) {
-        canClickToJob = false;
+        console.warn("❌ Could not extract job title. Skipping.");
+        continue;
       }
 
-      if (titleSkipEnabled) {
-        if (
-          titleSkipWords.some((word) =>
-            jobTitle.toLowerCase().includes(word.toLowerCase())
-          )
-        ) {
-          canClickToJob = false;
-        }
+      // ✅ FIXED: Use the enhanced filtering function
+      if (shouldSkipJobByTitle(jobTitle, filterSettings)) {
+        continue; // Skip this job
       }
-      if (titleFilterEnabled) {
-        if (
-          !titleFilterWords.some((word) =>
-            jobTitle.toLowerCase().includes(word.toLowerCase())
-          )
-        ) {
-          canClickToJob = false;
-        }
-      }
-      if (!(await checkAndPrepareRunState())) return;
-      if (canClickToJob) {
+
+      // ✅ If we reach here, the job passed all filters
+      console.log(`✅ Processing job: "${jobTitle}" at "${companyName}"`);
+
+      if (await checkAndPrepareRunState()) {
         try {
           await clickElement({ elementOrSelector: jobNameLink });
-          if (!(await checkAndPrepareRunState())) return;
-        } catch {}
-      }
-      try {
-        const mainContentElementWait = await waitForElements({
-          elementOrSelector: ".jobs-details__main-content",
-        });
-        const mainContentElement = mainContentElementWait?.[0];
-        if (!mainContentElement) {
-          canClickToJob = false;
+          const mainContentElement = (
+            await waitForElements({ elementOrSelector: ".jobs-details__main-content" })
+          )?.[0];
+          if (!mainContentElement) {
+            console.warn("⚠️ Could not find job details section. Skipping.");
+            continue;
+          }
+          // ✅ FIXED: Pass the full filterSettings object
+          await clickJob(listItem, companyName, jobTitle, filterSettings);
+        } catch (err) {
+          console.error("⚠️ Error clicking or applying:", err);
         }
-      } catch (e) {
-        console.trace("Failed to find the main job content");
-      }
-      if (!(await checkAndPrepareRunState())) return;
-      if (canClickToJob) {
-        await clickJob(listItem, companyName, jobTitle, badWordsEnabled);
       }
     }
 
@@ -1033,11 +1120,12 @@ async function runScript() {
       await goToNextPage();
     }
   } catch (error) {
-    const message = "Error in runScript: " + error?.message + "script stopped";
+    console.error("💥 Error in runScript:", error);
     await stopScript();
   }
 }
 
+// ✅ FIXED: Enhanced message listener with filter settings support
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "showNotOnJobSearchAlert") {
     const modalWrapper = document.getElementById("notOnJobSearchOverlay");
@@ -1066,11 +1154,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ isRunning: false });
       });
     return true;
-  }
-  if (message.action === "getCurrentUrl") {
+  } else if (message.action === "getCurrentUrl") {
     sendResponse({ url: window.location.href });
-  }
-  if (message.action === "showSavedLinksModal") {
+  } else if (message.action === "showSavedLinksModal") {
     const modalWrapper = document.getElementById("savedLinksOverlay");
     if (modalWrapper) {
       const linksData = message.savedLinks;
@@ -1117,8 +1203,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     }
     sendResponse({ success: true });
-  }
-  if (message.action === "showRunningModal") {
+  } else if (message.action === "showRunningModal") {
     sendResponse({ success: true });
   } else if (message.action === "hideRunningModal") {
     const modalWrapper = document.getElementById("scriptRunningOverlay");
@@ -1131,8 +1216,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         message: "scriptRunningOverlay not found",
       });
     }
+  } else if (message.action === "filterSettingsUpdated") {
+    // ✅ NEW: Handle filter settings updates from extension popup
+    console.log("🔧 Filter settings updated, refreshing cache...");
+    // Force refresh filter settings on next job processing
+    filterSettingsCache = null;
+    sendResponse({ success: true });
+  } else if (message.action === "getFilterSettings") {
+    // ✅ NEW: Handle filter settings requests
+    getFilterSettings()
+      .then(settings => sendResponse({ success: true, data: settings }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true; // Keep response channel open
   }
 });
+
+// ✅ NEW: Add filter settings cache for performance
+let filterSettingsCache = null;
+const CACHE_DURATION = 5000; // 5 seconds
+
+// ✅ NEW: Enhanced filter settings getter with caching
+async function getCachedFilterSettings() {
+  if (filterSettingsCache && 
+      Date.now() - filterSettingsCache.timestamp < CACHE_DURATION) {
+    return filterSettingsCache.data;
+  }
+  
+  const settings = await getFilterSettings();
+  filterSettingsCache = {
+    data: settings,
+    timestamp: Date.now()
+  };
+  
+  return settings;
+}
 
 window.addEventListener("error", function (event) {
   if (
@@ -1188,41 +1305,6 @@ window.addEventListener("load", function () {
             chrome.storage.local.set({ autoApplyRunning: false });
           }
         } else {
-          if (shouldRestartScript && loopRestartUrl) {
-            const currentUrl = new URL(window.location.href);
-            const savedUrl = new URL(loopRestartUrl);
-
-            const isJobSearchPage =
-              currentUrl.pathname.includes("/jobs/search/");
-            const hasKeywords =
-              currentUrl.searchParams.has("keywords") ||
-              savedUrl.searchParams.has("keywords");
-            const isStartPage =
-              currentUrl.searchParams.get("start") === "1" ||
-              !currentUrl.searchParams.has("start");
-            if (isJobSearchPage && hasKeywords && isStartPage) {
-              chrome.storage.local.remove([
-                "loopRestartUrl",
-                "shouldRestartScript",
-              ]);
-              setTimeout(() => {
-                startScript();
-                runScript();
-              }, 3000);
-            } else if (currentUrl.href.includes("JOBS_HOME_JYMBII")) {
-              setTimeout(() => {
-                window.location.href = loopRestartUrl;
-              }, 2000);
-            } else {
-              chrome.storage.local.remove([
-                "loopRestartUrl",
-                "shouldRestartScript",
-              ]);
-              chrome.storage.local.set({ autoApplyRunning: false });
-            }
-          } else {
-            chrome.storage.local.set({ autoApplyRunning: false });
-          }
           chrome.storage.local.set({ autoApplyRunning: false });
         }
       } catch {}
@@ -1234,10 +1316,28 @@ try {
   window.addEventListener("beforeunload", function () {
     chrome.storage.local.set({ autoApplyRunning: false });
   });
-} catch  {}
+} catch {}
+
+// ✅ FIXED: Storage listener for real-time filter updates
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local') {
+    const filterKeys = [
+      'badWords', 'titleFilterWords', 'titleSkipWords',
+      'badWordsEnabled', 'titleFilterEnabled', 'titleSkipEnabled'
+    ];
+    
+    const hasFilterChanges = Object.keys(changes).some(key => 
+      filterKeys.includes(key)
+    );
+    
+    if (hasFilterChanges) {
+      console.log('🔧 Filter settings changed in storage, clearing cache...');
+      filterSettingsCache = null; // Clear cache to force refresh
+    }
+  }
+});
 
 // Your existing content script functionality...
-// (Keep all your current content script code here)
 // PERSISTENT Auto-popup functionality - Always visible on LinkedIn
 let extensionNotificationShown = false;
 let notificationCheckInterval = null;
@@ -1369,41 +1469,61 @@ function showExtensionNotification({ type, title, message, actionText, actionCal
     if (existingNotification) {
         existingNotification.remove();
     }
-
+ 
     extensionNotificationShown = true;
 
     // Create notification
     const notification = document.createElement('div');
-    notification.id = 'personal-extension-notification';
-    notification.innerHTML = `
-        <div class="extension-notification-content">
-            <div class="extension-notification-header">
-                <div class="extension-notification-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" fill="#0066cc"/>
-                        <path d="M8 12l2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </div>
-                <h3 class="extension-notification-title">${title}</h3>
-                <button class="extension-notification-minimize" id="extension-notification-minimize" title="Minimize">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M4 8h8" stroke="#666" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </button>
-            </div>
-            <p class="extension-notification-message">${message}</p>
-            <div class="extension-notification-actions">
-                <button class="extension-notification-action" id="extension-notification-action">
-                    ${actionText}
-                </button>
-            </div>
-        </div>
-    `;
+notification.id = 'personal-extension-notification';
+notification.innerHTML = `
+  <div class="extension-notification-content">
+    <div class="extension-notification-header">
+     <div class="extension-notification-icon" id="extension-logo-container" style="position: relative; width: 40px; height: 40px;">
+  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="position: absolute; top: 0; left: 10;">
+    <rect x="1" y="1" width="38" height="38" rx="10" ry="10" 
+          fill="transparent" stroke="white" stroke-width="1" />
+  </svg>
+</div>
 
-    // Add styles if not present
-    addNotificationStyles();
-    
-    document.body.appendChild(notification);
+      <h3 class="extension-notification-title">${title}</h3>
+      <button class="extension-notification-minimize" id="extension-notification-minimize" title="Minimize">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="white">
+          <path d="M4 8h8" stroke="#ffffffff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <p class="extension-notification-message">${message}</p>
+    <div class="extension-notification-actions">
+      <button class="extension-notification-action" id="extension-notification-action">
+        ${actionText}
+      </button>
+    </div>
+  </div>
+`;
+
+// 🔽 Dynamically inject the logo image
+const logoImg = document.createElement('img');
+logoImg.src = chrome.runtime.getURL('assets/images/OPPZ_Ai_Logo.png');
+logoImg.alt = 'Logo';
+
+// Center the image inside the 40x40 container
+logoImg.style.position = 'absolute';
+logoImg.style.top = '50%';
+logoImg.style.left = '72%';
+logoImg.style.transform = 'translate(-50%, -50%)';
+logoImg.style.width = '26px'; // adjust size as needed
+logoImg.style.height = '26px';
+logoImg.style.pointerEvents = 'none'; // avoid click interference
+
+const logoContainer = notification.querySelector('#extension-logo-container');
+if (logoContainer) {
+  logoContainer.appendChild(logoImg);
+}
+
+// Add styles
+addNotificationStyles();
+
+document.body.appendChild(notification);
 
     // Add event listeners
     const actionButton = notification.querySelector('#extension-notification-action');
@@ -1455,6 +1575,7 @@ function addNotificationStyles() {
             right: 20px !important;
             width: 320px !important;
             background: white !important;
+            color:white;
             border-radius: 12px !important;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
             border: 1px solid #e1e5e9 !important;
@@ -1470,13 +1591,15 @@ function addNotificationStyles() {
         }
 
         .extension-notification-content {
-            padding: 16px !important;
+            padding: px !important;
         }
 
         .extension-notification-header {
             display: flex !important;
             align-items: center !important;
+            background: linear-gradient(to right, #8c33daff, #655ee7ff) !important;
             gap: 8px !important;
+            height:46px; !important;
             margin-bottom: 8px !important;
         }
 
@@ -1487,44 +1610,50 @@ function addNotificationStyles() {
         .extension-notification-title {
             flex: 1 !important;
             margin: 0 !important;
-            font-size: 14px !important;
+            margin-left:8px !important;
+            font-size: 21px !important;
             font-weight: 600 !important;
-            color: #1d1d1f !important;
+            color: #ffffffff !important;
         }
 
         .extension-notification-minimize {
             background: none !important;
             border: none !important;
             cursor: pointer !important;
+            color:white;
             padding: 4px !important;
             border-radius: 4px !important;
             transition: background-color 0.2s !important;
             opacity: 0.6 !important;
+            margin-right:8px !important;
         }
 
         .extension-notification-minimize:hover {
-            background-color: #f5f5f5 !important;
+            background-color: none !important;
             opacity: 1 !important;
         }
 
         .extension-notification-message {
-            margin: 0 0 12px 0 !important;
+           margin: 12px 0 12px 8px !important;
+
             font-size: 13px !important;
-            color: #515151 !important;
+            color: #070707ff !important;
             line-height: 1.4 !important;
         }
 
         .extension-notification-actions {
             display: flex !important;
             gap: 8px !important;
+            margin:16px !important;
         }
 
         .extension-notification-action {
             flex: 1 !important;
-            background: #0066cc !important;
+           background: linear-gradient(to right, #8c33daff, #655ee7ff) !important;
             color: white !important;
             border: none !important;
             padding: 10px 16px !important;
+             margin:16px !important;
             border-radius: 8px !important;
             font-size: 13px !important;
             font-weight: 500 !important;
@@ -1533,7 +1662,7 @@ function addNotificationStyles() {
         }
 
         .extension-notification-action:hover {
-            background: #0052a3 !important;
+            background: linear-gradient(to right, #792dbbff, #514cbeff) !important;
         }
 
         .extension-notification-action:active {
@@ -1544,18 +1673,20 @@ function addNotificationStyles() {
             position: fixed !important;
             top: 20px !important;
             right: 20px !important;
-            background: white !important;
+            background: linear-gradient(to right, #8c33daff, #655ee7ff) !important;
             border-radius: 24px !important;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
             border: 1px solid #e1e5e9 !important;
             z-index: 999999 !important;
             cursor: pointer !important;
+            color:#ffffffff !important;
             transition: transform 0.2s !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
 
         #personal-extension-notification-minimized:hover {
             transform: scale(1.05) !important;
+            color:white !important;
         }
 
         .extension-notification-minimized-content {
@@ -1568,7 +1699,7 @@ function addNotificationStyles() {
         .extension-notification-minimized-text {
             font-size: 12px !important;
             font-weight: 500 !important;
-            color: #1d1d1f !important;
+            color: #fafafaff !important;
         }
     `;
     
@@ -1602,7 +1733,7 @@ function showMinimizedNotification() {
         <div class="extension-notification-minimized-content">
             <div class="extension-notification-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" fill="#0066cc"/>
+                    <circle cx="12" cy="12" r="10" fill="#41cc00ff"/>
                     <path d="M8 12l2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </div>

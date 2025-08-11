@@ -50,15 +50,41 @@ const checkAutoApplyReadiness = async () => {
 };
 
  // Change the auto-apply button UI state
+// Fixed function to change the auto-apply button UI state
 function changeAutoApplyButton(isRunning, buttonElement) {
     if (!buttonElement) return;
 
     if (isRunning) {
-        buttonElement.textContent = 'Stop Auto Apply';
-        buttonElement.style.backgroundColor = '#E60000';
+        // Use background instead of backgroundColor to override the gradient
+        buttonElement.style.background = '#E60000';
+        buttonElement.style.boxShadow = '0 4px 12px rgba(192, 24, 24, 0.3)';
+        
+        // Show running icon and hide start icon
+        const startIcon = buttonElement.querySelector('#start-icon');
+        const runningIcon = buttonElement.querySelector('#running-icon');
+        if (startIcon) startIcon.style.display = 'none';
+        if (runningIcon) runningIcon.style.display = 'inline-flex';
+        
+        // Update text content while preserving icons
+        const textNodes = Array.from(buttonElement.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+        textNodes.forEach(node => node.remove());
+        buttonElement.appendChild(document.createTextNode('Stop Auto Apply'));
+        
     } else {
-        buttonElement.textContent = 'Start Auto Apply';
-        buttonElement.style.backgroundColor = '#28a745';
+        // Restore the original gradient background
+        buttonElement.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        buttonElement.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+        
+        // Show start icon and hide running icon
+        const startIcon = buttonElement.querySelector('#start-icon');
+        const runningIcon = buttonElement.querySelector('#running-icon');
+        if (startIcon) startIcon.style.display = 'inline-flex';
+        if (runningIcon) runningIcon.style.display = 'none';
+        
+        // Update text content while preserving icons
+        const textNodes = Array.from(buttonElement.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+        textNodes.forEach(node => node.remove());
+        buttonElement.appendChild(document.createTextNode('Start Auto Apply'));
     }
 }
 
@@ -66,6 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeMainPopup(); // your main entry
 });
 
+document.getElementById("help-button").addEventListener("click", function (e) {
+  e.preventDefault();
+  chrome.tabs.create({ url: "https://www.oppzai.com/FAQ" });
+});
 
 // Enhanced auto-apply button handler
 const handleAutoApplyButton = async (button) => {
@@ -94,7 +124,7 @@ if (!currentUrl.includes('linkedin.com/jobs')) {
                 message += '\n\nWould you like to fill out your information now?';
                 
                 if (confirm(message)) {
-                    chrome.tabs.create({ url: '/popup/formControl/formControl.html' });
+                    chrome.tabs.create({ url: 'https://www.oppzai.com/MainPage' });
                 }
                 return;
             } else {

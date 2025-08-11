@@ -120,15 +120,16 @@
     </div>
     <script src="../../content/utils.js"></script>
     <script src="popup.js"></script>
-    <-- Add this to your popup.html -->
-<!-- <div id="authStatus" class="button button-logout">
+    
+<div id="authStatus" class="button button-logout">
   <button id="logoutBtn" style="background: none; font-size: 24; border: none; color: #f6f6f7; cursor: pointer;">Logout</button>
 </div>
 
-
-
   </body>
 </html> -->
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -144,12 +145,13 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f0f0f0;
+            background:transparent;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            
+            border-radius: 20px;
+             
         }
 
         .extension-container {
@@ -162,7 +164,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg,#be229c, #0b123a54);
+           background: linear-gradient(to right, #8c33daff, #655ee7ff);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -288,23 +290,17 @@
             font-size: 15px;
         }
 
-        /* Remove running state styles since we're keeping original functionality */
+        
     </style>
 </head>
 <body>
     <div class="extension-container">
         <div class="header">
             <div class="header-icon">
-                <!-- Option 1: Use a placeholder SVG icon -->
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                </svg>
+                 
+                <img src="../../assets/images/OPPZ_Ai_Logo.png" alt="Logo">
                 
-                <!-- Option 2: Use your base64 image (you need to paste the complete base64 string) -->
-                <!-- <img src="data:image/png;base64,YOUR_COMPLETE_BASE64_STRING_HERE" alt="OPPZ AI Logo" width="18" height="18" /> -->
-                
-                <!-- Option 3: Use an external image file -->
-                <!-- <img src="./logo.png" alt="OPPZ AI Logo" width="18" height="18" /> -->
+                 
             </div>
             <div class="header-title">OPPZ AI</div>
         </div>
@@ -325,12 +321,9 @@
             
 
 
-            <a href="./Privacy_Policy.html" id="help-button" class="help-button">
-                Help
-            </a>
-             <!-- <div id="auto-apply-status" class="status">
-                Checking readiness...
-            </div> -->
+            <a href="#" id="help-button" class="help-button">Help</a>
+
+             
         </div>
     </div>
 

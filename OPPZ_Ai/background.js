@@ -365,6 +365,7 @@ function checkAutoApplyStatus(tabId, sendResponse) {
 
  
 // Fixed job data saving function - prevents duplicates and saves only once per job
+// Save job if not already stored with same title + companyName combo
 async function saveLinkedInJobData(jobTitle, jobLink, companyName, isAutoApplied = false) {
   try {
     const result = await chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs']);
@@ -372,33 +373,25 @@ async function saveLinkedInJobData(jobTitle, jobLink, companyName, isAutoApplied
     let externalJobs = result.externalApplyData || [];
     let autoJobs = result.autoAppliedJobs || [];
 
-    // Normalize data for comparison
     const normalizedTitle = jobTitle?.toLowerCase().trim();
     const normalizedCompany = companyName?.toLowerCase().trim();
-    const normalizedLink = jobLink?.toLowerCase().trim();
 
-    // Check for duplicates in the appropriate array
     const targetArray = isAutoApplied ? autoJobs : externalJobs;
-    
+
+    // ✅ Check for duplicates only based on jobTitle + companyName
     const isDuplicate = targetArray.some(job => {
-      const jobTitle_normalized = job.title?.toLowerCase().trim();
-      const jobCompany_normalized = job.companyName?.toLowerCase().trim();
-      const jobLink_normalized = job.link?.toLowerCase().trim();
-      
-      // Check for exact match on link OR combination of title + company
-      return (
-        jobLink_normalized === normalizedLink || 
-        (jobTitle_normalized === normalizedTitle && jobCompany_normalized === normalizedCompany)
-      );
+      const jobTitleNormalized = job.title?.toLowerCase().trim();
+      const jobCompanyNormalized = job.companyName?.toLowerCase().trim();
+
+      return jobTitleNormalized === normalizedTitle && jobCompanyNormalized === normalizedCompany;
     });
 
-    // If duplicate found, don't save
     if (isDuplicate) {
-      console.log(`Duplicate job skipped: ${jobTitle} at ${companyName}`);
-      return { success: false, reason: 'duplicate', message: 'Job already exists' };
+      console.log(`⛔ Duplicate job skipped: ${jobTitle} at ${companyName}`);
+      return { success: false, reason: 'duplicate', message: 'Job with same title and company already exists' };
     }
 
-    // Create new job data
+    // ✅ Create new job data
     const jobData = {
       id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
       title: jobTitle,
@@ -409,30 +402,29 @@ async function saveLinkedInJobData(jobTitle, jobLink, companyName, isAutoApplied
       appliedDate: new Date().toISOString()
     };
 
-    // Add to beginning of array
+    // ✅ Add to beginning
     targetArray.unshift(jobData);
-    
-    // Keep only latest 500 jobs
+
+    // Optional: Keep only the most recent 500 jobs
     if (targetArray.length > 500) {
       targetArray.splice(500);
     }
 
-    // Save updated array
     const storageKey = isAutoApplied ? 'autoAppliedJobs' : 'externalApplyData';
+
     await chrome.storage.local.set({
       [storageKey]: targetArray
     });
 
-    console.log(`Job saved successfully to ${storageKey}:`, jobData);
+    console.log(`✅ Job saved to ${storageKey}:`, jobData);
     return { success: true, jobData };
-    
+
   } catch (error) {
-    console.error('Error saving job data:', error);
+    console.error('❌ Error saving job data:', error);
     return { success: false, error: error.message };
   }
 }
-
-
+ 
 
 // Input field configuration functions
 function deleteInputFieldConfig(placeholder) {
@@ -622,6 +614,9 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  
+  
+
   if (message.from === 'website' && message.action === 'getFormControlData') {
     chrome.storage.local.get(['inputFieldConfigs', 'radioButtons', 'dropdowns'], (data) => {
       sendResponse({ success: true, data });
@@ -633,43 +628,80 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Extension background script for external messaging & job data management
 
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
-  const { from, action, data } = message;
+  const { from, action, data, key, value } = message;
+
+  console.log('[Extension] Received message:', message);
 
   if (from !== 'website') return;
 
-  // 1. READ all form control data
-  if (action === 'getFormControlData') {
-    chrome.storage.local.get(['inputFieldConfigs', 'radioButtons', 'dropdowns'], (result) => {
-      sendResponse({ success: true, data: result });
-    });
-    return true;
-  }
+  switch (action) {
+    case 'ping':
+      sendResponse({
+        success: true,
+        message: 'Extension is alive!',
+        timestamp: Date.now()
+      });
+      return true;
 
-  // 2. UPDATE input text field value
-  if (action === 'updateInputFieldValue') {
-    (async () => {
-      try {
+    case 'getFilterSettings':
+      chrome.storage.local.get([
+        'badWords', 
+        'titleFilterWords', 
+        'titleSkipWords',
+        'badWordsEnabled',
+        'titleFilterEnabled', 
+        'titleSkipEnabled'
+      ], (data) => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          sendResponse({
+            success: true,
+            badWords: data.badWords || [],
+            titleFilterWords: data.titleFilterWords || [],
+            titleSkipWords: data.titleSkipWords || [],
+            badWordsEnabled: data.badWordsEnabled ?? true,
+            titleFilterEnabled: data.titleFilterEnabled ?? true,
+            titleSkipEnabled: data.titleSkipEnabled ?? true
+          });
+        }
+      });
+      return true;
+
+    case 'updateFilterSetting':
+      if (!key) {
+        sendResponse({ success: false, error: 'No key provided' });
+        return true;
+      }
+
+      chrome.storage.local.set({ [key]: value }, () => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          sendResponse({ success: true });
+        }
+      });
+      return true;
+
+    // 🔄 Form Config Handling
+    case 'getFormControlData':
+      chrome.storage.local.get(['inputFieldConfigs', 'radioButtons', 'dropdowns'], (result) => {
+        sendResponse({ success: true, data: result });
+      });
+      return true;
+
+    case 'updateInputFieldValue':
+      (async () => {
         const { placeholder, value } = data;
-        
-        // Log incoming data for debugging
-        console.log('[Extension] Received update for:', { placeholder, value });
-        
-        // Normalize placeholder for comparison (lowercase, trimmed)
         const placeholderKey = placeholder.trim().toLowerCase();
-
         const result = await new Promise(resolve => {
           chrome.storage.local.get(['inputFieldConfigs'], resolve);
         });
-
         const configs = result.inputFieldConfigs || [];
-        console.log('[Extension] Current configs:', configs);
-
-        // Find existing config with case-insensitive comparison
         let configFound = false;
         const updated = configs.map(config => {
           const configKey = config.placeholderIncludes?.trim().toLowerCase();
           if (configKey === placeholderKey) {
-            console.log('[Extension] Updating existing config:', config.placeholderIncludes);
             configFound = true;
             return { 
               ...config, 
@@ -679,276 +711,207 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
           }
           return config;
         });
-
-        // If no existing config was found, create a new one
         if (!configFound) {
-          console.log('[Extension] Creating new config for:', placeholder);
-          const newConfig = {
-            placeholderIncludes: placeholder, // Keep original case
+          updated.push({
+            placeholderIncludes: placeholder,
             defaultValue: value,
             count: 1,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
-          };
-          updated.push(newConfig);
+          });
         }
-
-        // Save the updated configs
         chrome.storage.local.set({ inputFieldConfigs: updated }, () => {
-          console.log(`[Extension] Successfully stored "${placeholder}": "${value}"`);
-          console.log('[Extension] Updated configs:', updated);
           sendResponse({ success: true });
         });
+      })();
+      return true;
 
-      } catch (error) {
-        console.error('[Extension] Failed to update input field:', error);
-        sendResponse({ success: false, error: error.message });
-      }
-    })();
-
-    return true; // Keep message channel open for async response
-  }
-
-  // 3. UPDATE radio button value
-  if (action === 'updateRadioButtonValue') {
-    chrome.storage.local.get(['radioButtons'], (result) => {
-      const configs = result.radioButtons || [];
-      const updated = configs.map(config =>
-        config.placeholderIncludes === data.placeholder
-          ? {
-              ...config,
-              options: config.options.map(option => ({
-                ...option,
-                selected: option.value === data.value
-              }))
-            }
-          : config
-      );
-      chrome.storage.local.set({ radioButtons: updated }, () => {
-        sendResponse({ success: true });
-      });
-    });
-    return true;
-  }
-
-  // 4. UPDATE dropdown selected value
-  if (action === 'updateDropdownValue') {
-    chrome.storage.local.get(['dropdowns'], (result) => {
-      const configs = result.dropdowns || [];
-      const updated = configs.map(config =>
-        config.placeholderIncludes === data.placeholder
-          ? {
-              ...config,
-              options: config.options.map(option => ({
-                ...option,
-                selected: option.value === data.selectedValue
-              }))
-            }
-          : config
-      );
-      chrome.storage.local.set({ dropdowns: updated }, () => {
-        sendResponse({ success: true });
-      });
-    });
-    return true;
-  }
-
-  // 5. GET job data
-  if (action === 'getJobData') {
-    chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
-      sendResponse({
-        success: true,
-        data: {
-          externalApplyData: result.externalApplyData || [],
-          autoAppliedJobs: result.autoAppliedJobs || []
-        }
-      });
-    });
-    return true;
-  }
-
-  // 6. DELETE job
-  if (action === 'deleteJob') {
-    const { jobId, isAutoApplied } = data;
-
-    chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
-      let externalJobs = result.externalApplyData || [];
-      let autoJobs = result.autoAppliedJobs || [];
-
-      if (isAutoApplied) {
-        autoJobs = autoJobs.filter(job => job.id !== jobId);
-      } else {
-        externalJobs = externalJobs.filter(job => job.id !== jobId);
-      }
-
-      chrome.storage.local.set({
-        externalApplyData: externalJobs,
-        autoAppliedJobs: autoJobs
-      }, () => {
-        console.log(`Job deleted successfully`);
-        sendResponse({ success: true });
-      });
-    });
-    return true;
-  }
-
-  // 7. UPDATE job
-  if (action === 'updateJob') {
-    const { jobId, isAutoApplied, updatedData } = data;
-
-    chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
-      let externalJobs = result.externalApplyData || [];
-      let autoJobs = result.autoAppliedJobs || [];
-
-      const update = (jobs) =>
-        jobs.map(job => (job.id === jobId ? { ...job, ...updatedData } : job));
-
-      if (isAutoApplied) {
-        autoJobs = update(autoJobs);
-      } else {
-        externalJobs = update(externalJobs);
-      }
-
-      chrome.storage.local.set({
-        externalApplyData: externalJobs,
-        autoAppliedJobs: autoJobs
-      }, () => {
-        console.log(`Job updated`);
-        sendResponse({ success: true });
-      });
-    });
-    return true;
-  }
-
-  // 8. GET job statistics
-  if (action === 'getJobStats') {
-    chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
-      const externalJobs = result.externalApplyData || [];
-      const autoJobs = result.autoAppliedJobs || [];
-
-      const stats = {
-        total: externalJobs.length + autoJobs.length,
-        external: externalJobs.length,
-        auto: autoJobs.length,
-        today: 0,
-        thisWeek: 0,
-        thisMonth: 0
-      };
-
-      const now = Date.now();
-      const oneDayAgo = now - 86400000;
-      const oneWeekAgo = now - 7 * 86400000;
-      const oneMonthAgo = now - 30 * 86400000;
-
-      [...externalJobs, ...autoJobs].forEach(job => {
-        if (job.time) {
-          if (job.time >= oneDayAgo) stats.today++;
-          if (job.time >= oneWeekAgo) stats.thisWeek++;
-          if (job.time >= oneMonthAgo) stats.thisMonth++;
-        }
-      });
-
-      sendResponse({ success: true, data: stats });
-    });
-    return true;
-  }
-
-  // 9. EXPORT job data
-  if (action === 'exportJobData') {
-    chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
-      const externalJobs = result.externalApplyData || [];
-      const autoJobs = result.autoAppliedJobs || [];
-
-      const exportData = {
-        exportDate: new Date().toISOString(),
-        totalJobs: externalJobs.length + autoJobs.length,
-        externalJobs,
-        autoJobs
-      };
-
-      sendResponse({ success: true, data: exportData });
-    });
-    return true;
-  }
-
-  // 10. RECORD auto-applied job (direct version)
-  if (action === 'recordAutoAppliedJob') {
-    const newJob = data.job;
-
-    chrome.storage.local.get(['autoAppliedJobs'], (result) => {
-      let autoAppliedJobs = result.autoAppliedJobs || [];
-
-      const isDuplicate = autoAppliedJobs.some(job =>
-        job.link === newJob.link &&
-        job.title?.toLowerCase().trim() === newJob.title?.toLowerCase().trim() &&
-        job.companyName?.toLowerCase().trim() === newJob.companyName?.toLowerCase().trim()
-      );
-
-      if (!isDuplicate) {
-        autoAppliedJobs.unshift(newJob);
-        chrome.storage.local.set({ autoAppliedJobs }, () => {
-          console.log("Job recorded:", newJob);
+    case 'updateRadioButtonValue':
+      chrome.storage.local.get(['radioButtons'], (result) => {
+        const configs = result.radioButtons || [];
+        const updated = configs.map(config =>
+          config.placeholderIncludes === data.placeholder
+            ? {
+                ...config,
+                options: config.options.map(option => ({
+                  ...option,
+                  selected: option.value === data.value
+                }))
+              }
+            : config
+        );
+        chrome.storage.local.set({ radioButtons: updated }, () => {
           sendResponse({ success: true });
         });
-      } else {
-        console.log("Duplicate job skipped");
-        sendResponse({ success: false, reason: 'duplicate' });
-      }
-    });
-    return true;
-  }
+      });
+      return true;
 
-  // 11. SAVE external job (manual application)
-  if (action === 'saveExternalJob') {
-    const { title, link, companyName } = data;
-
-    const jobData = {
-      id: Date.now(),
-      title,
-      link,
-      companyName,
-      time: Date.now()
-    };
-
-    chrome.storage.local.get(['externalApplyData'], (result) => {
-      let externalJobs = result.externalApplyData || [];
-
-      const isDuplicate = externalJobs.some(job =>
-        job.link === jobData.link &&
-        job.title?.toLowerCase().trim() === jobData.title?.toLowerCase().trim() &&
-        job.companyName?.toLowerCase().trim() === jobData.companyName?.toLowerCase().trim()
-      );
-
-      if (!isDuplicate) {
-        externalJobs.unshift(jobData);
-        chrome.storage.local.set({ externalApplyData: externalJobs }, () => {
-          console.log("External job saved:", jobData);
-          sendResponse({ success: true, jobData });
+    case 'updateDropdownValue':
+      chrome.storage.local.get(['dropdowns'], (result) => {
+        const configs = result.dropdowns || [];
+        const updated = configs.map(config =>
+          config.placeholderIncludes === data.placeholder
+            ? {
+                ...config,
+                options: config.options.map(option => ({
+                  ...option,
+                  selected: option.value === data.selectedValue
+                }))
+              }
+            : config
+        );
+        chrome.storage.local.set({ dropdowns: updated }, () => {
+          sendResponse({ success: true });
         });
-      } else {
-        console.log("Duplicate external job skipped");
-        sendResponse({ success: false, reason: 'duplicate' });
-      }
-    });
-    return true;
-  }
-  const { key, value } = message;
+      });
+      return true;
 
-  if (action === 'updateFilterSetting') {
-    if (!key) {
-      console.warn("No key provided in updateFilterSetting message");
-      sendResponse({ success: false });
-      return;
-    }
+    case 'getJobData':
+      chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
+        sendResponse({
+          success: true,
+          data: {
+            externalApplyData: result.externalApplyData || [],
+            autoAppliedJobs: result.autoAppliedJobs || []
+          }
+        });
+      });
+      return true;
 
-    chrome.storage.local.set({ [key]: value }, () => {
-      console.log('Updated filter setting:', key, value);
-      sendResponse({ success: true });
-    });
+    case 'deleteJob':
+      const { jobId, isAutoApplied } = data;
+      chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
+        let externalJobs = result.externalApplyData || [];
+        let autoJobs = result.autoAppliedJobs || [];
+        if (isAutoApplied) {
+          autoJobs = autoJobs.filter(job => job.id !== jobId);
+        } else {
+          externalJobs = externalJobs.filter(job => job.id !== jobId);
+        }
+        chrome.storage.local.set({
+          externalApplyData: externalJobs,
+          autoAppliedJobs: autoJobs
+        }, () => {
+          sendResponse({ success: true });
+        });
+      });
+      return true;
 
-    return true; // Keep message channel alive
+    case 'updateJob':
+      const { updatedData } = data;
+      chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
+        let externalJobs = result.externalApplyData || [];
+        let autoJobs = result.autoAppliedJobs || [];
+        const update = (jobs) =>
+          jobs.map(job => (job.id === data.jobId ? { ...job, ...updatedData } : job));
+        if (data.isAutoApplied) {
+          autoJobs = update(autoJobs);
+        } else {
+          externalJobs = update(externalJobs);
+        }
+        chrome.storage.local.set({
+          externalApplyData: externalJobs,
+          autoAppliedJobs: autoJobs
+        }, () => {
+          sendResponse({ success: true });
+        });
+      });
+      return true;
+
+    case 'getJobStats':
+      chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
+        const externalJobs = result.externalApplyData || [];
+        const autoJobs = result.autoAppliedJobs || [];
+        const now = Date.now();
+        const oneDay = 86400000;
+        const oneWeek = 7 * oneDay;
+        const oneMonth = 30 * oneDay;
+        const stats = {
+          total: externalJobs.length + autoJobs.length,
+          external: externalJobs.length,
+          auto: autoJobs.length,
+          today: 0,
+          thisWeek: 0,
+          thisMonth: 0
+        };
+        [...externalJobs, ...autoJobs].forEach(job => {
+          if (job.time) {
+            if (job.time >= now - oneDay) stats.today++;
+            if (job.time >= now - oneWeek) stats.thisWeek++;
+            if (job.time >= now - oneMonth) stats.thisMonth++;
+          }
+        });
+        sendResponse({ success: true, data: stats });
+      });
+      return true;
+
+    case 'exportJobData':
+      chrome.storage.local.get(['externalApplyData', 'autoAppliedJobs'], (result) => {
+        sendResponse({
+          success: true,
+          data: {
+            exportDate: new Date().toISOString(),
+            totalJobs: (result.externalApplyData?.length || 0) + (result.autoAppliedJobs?.length || 0),
+            externalJobs: result.externalApplyData || [],
+            autoJobs: result.autoAppliedJobs || []
+          }
+        });
+      });
+      return true;
+
+    case 'recordAutoAppliedJob':
+      const newJob = data.job;
+      chrome.storage.local.get(['autoAppliedJobs'], (result) => {
+        let autoAppliedJobs = result.autoAppliedJobs || [];
+        const isDuplicate = autoAppliedJobs.some(job =>
+          job.link === newJob.link &&
+          job.title?.toLowerCase().trim() === newJob.title?.toLowerCase().trim() &&
+          job.companyName?.toLowerCase().trim() === newJob.companyName?.toLowerCase().trim()
+        );
+        if (!isDuplicate) {
+          autoAppliedJobs.unshift(newJob);
+          chrome.storage.local.set({ autoAppliedJobs }, () => {
+            sendResponse({ success: true });
+          });
+        } else {
+          sendResponse({ success: false, reason: 'duplicate' });
+        }
+      });
+      return true;
+
+    case 'saveExternalJob':
+      const { title, link, companyName } = data;
+      const jobData = {
+        id: Date.now(),
+        title,
+        link,
+        companyName,
+        time: Date.now()
+      };
+      chrome.storage.local.get(['externalApplyData'], (result) => {
+        let externalJobs = result.externalApplyData || [];
+        const isDuplicate = externalJobs.some(job =>
+          job.link === jobData.link &&
+          job.title?.toLowerCase().trim() === jobData.title?.toLowerCase().trim() &&
+          job.companyName?.toLowerCase().trim() === jobData.companyName?.toLowerCase().trim()
+        );
+        if (!isDuplicate) {
+          externalJobs.unshift(jobData);
+          chrome.storage.local.set({ externalApplyData: externalJobs }, () => {
+            sendResponse({ success: true, jobData });
+          });
+        } else {
+          sendResponse({ success: false, reason: 'duplicate' });
+        }
+      });
+      return true;
+
+    default:
+      sendResponse({ success: false, error: 'Unknown action: ' + action });
+      return false;
   }
 });
+
 
 
 // Helper function to check if job already exists (can be used elsewhere)

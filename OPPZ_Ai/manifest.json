@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "OPPZ Ai",
-  "version": "1.0",
-  "description": "Applying for Jobs Made Effortless!",
+  "version": "1.1.5",
+  "description": "Effortless Job Applications. Powered by AI.",
   "icons": {
     "16": "/assets/images/OPPZ_Ai_Logo.jpeg",
     "48": "/assets/images/OPPZ_Ai_Logo.jpeg",
@@ -40,23 +40,32 @@
     "activeTab",
     "notifications"
   ],
-  "host_permissions": [
-    "http://localhost:3000/*",
-    "http://localhost:5006/*",
-    "https://www.linkedin.com/*"
-  ],
+ "host_permissions": [
+  "http://localhost:3000/*",
+  "http://localhost:5006/*",
+  "https://www.linkedin.com/*",
+  "https://oppzai.com/*",
+  "https://www.oppzai.com/*",
+  "https://oppzai-production-c5c3.up.railway.app/*"
+],
+
   "web_accessible_resources": [
     {
       "resources": [
         "popup/**",
         "assets/images/*",
-        "modals/*"
+        "modals/*",
+        "assets/images/OPPZ_Ai_Logo.png"
       ],
       "matches": ["<all_urls>"]
     }
   ],
-  "externally_connectable": {
-    "matches": ["http://localhost:3000/*",
-     "https://your-production-domain.com/*"]
-  }
+ "externally_connectable": {
+  "matches": [
+    "http://localhost:3000/*",
+    "https://oppzai.com/*",
+    "https://www.oppzai.com/*"
+  ]
+}
+
 }
