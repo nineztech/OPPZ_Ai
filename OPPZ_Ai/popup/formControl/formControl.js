@@ -748,6 +748,3 @@ document.addEventListener('DOMContentLoaded', () => {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = FormManager;
 }
-// Initialize the form manager
-const formManager = new FormManager();
-window.formManager = formManager; // 👈 Make it accessible globally
