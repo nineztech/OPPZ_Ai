@@ -458,7 +458,7 @@ const InputFieldConfigs: React.FC = () => {
 
       {/* Statistics Bar */}
       {configs.length > 0 && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border">
+        <div className="mb-6 p-4 -mt-7 shadow-md bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border">
           <div className="flex flex-wrap gap-4 items-center justify-between">
             <div className="flex flex-wrap gap-6">
               <div className="text-center">
