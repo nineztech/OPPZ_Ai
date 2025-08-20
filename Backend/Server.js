@@ -26,6 +26,8 @@ if (!fs.existsSync(uploadsDir)) {
 // Enable CORS - Fixed configuration
 app.use(cors({
   origin: [
+    'http://localhost:3000',
+    'https://www.oppzai.com',
     'chrome-extension://edejolphacgbhddjeoomiadkgfaocjcj',
     'moz-extension://*',
     process.env.USER_URL,
