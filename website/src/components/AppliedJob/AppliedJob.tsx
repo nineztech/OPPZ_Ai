@@ -40,7 +40,7 @@ interface JobStats {
 }
 
 // API base URL - update this to match your backend
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5006/api';
+const api_baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5006/api";
 
 const extensionId = 'edejolphacgbhddjeoomiadkgfaocjcj';
 
@@ -115,7 +115,7 @@ const JobApplicationHistory: React.FC = () => {
   // API functions for backend communication - wrapped in useCallback to fix dependency issues
   const saveJobToDatabase = useCallback(async (job: Job): Promise<boolean> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/applied-jobs/save`, {
+      const response = await fetch(`${api_baseUrl}/api/applied-jobs/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +144,7 @@ const JobApplicationHistory: React.FC = () => {
     if (!userEmail) return [];
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/applied-jobs/${userEmail}`);
+      const response = await fetch(`${api_baseUrl}/api/applied-jobs/${userEmail}`);
       const data = await response.json();
       
       if (data.success) {
