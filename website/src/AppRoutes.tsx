@@ -18,6 +18,9 @@ import ContectPage from './components/Contact_tutorial/Contect';
 import LoadingSpinner from './components/LoadingSpinner/LoadingSpinner';
 import RefundPolicy from './components/auth/RefundPolicy';
 import FAQ from './components/Home/components/FAQ';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
+
 const AppRoutes = () => {
   const { isLoading } = useAuth();
   if (isLoading) return <LoadingSpinner />;
@@ -27,6 +30,8 @@ const AppRoutes = () => {
       <Route path="/" element={<Layout><Home /></Layout>} />
       <Route path="/signup" element={<Layout><SignUp /></Layout>} />
       <Route path="/login" element={<Layout><Login /></Layout>} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/PrivacyPolicy" element={<Layout><PrivacyPolicy /></Layout>} />
       <Route path="/TermsAndConditions" element={<Layout><TermsAndConditions /></Layout>} />
       <Route path="/RefundPolicy" element={<Layout><RefundPolicy /></Layout>} />
