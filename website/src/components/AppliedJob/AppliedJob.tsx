@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-
+ 
 import jsPDF from 'jspdf';
 import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer 
 } from 'recharts';
 import {
   Briefcase,
@@ -166,7 +166,9 @@ const JobApplicationHistory: React.FC = () => {
   }, [userEmail]);
 
   const buildChartData = useCallback((jobs: Job[]) => {
+  
     const today = dayjs();
+
     let start: dayjs.Dayjs;
     let end: dayjs.Dayjs;
 
@@ -569,11 +571,17 @@ const JobApplicationHistory: React.FC = () => {
 
               <div className="bg-gradient-to-br from-indigo-500 to-purple-600  p-4 rounded-xl">
                 <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={chartData}>
-                    <XAxis dataKey="date" stroke="white" />
-                    <YAxis stroke="white" />
-                    <Bar dataKey="count" fill="White" radius={[4, 4, 0, 0]} className='border-2 border-white'/>
-                  </BarChart>
+                 <BarChart data={chartData}>
+  <XAxis dataKey="date" stroke="white" />
+  <YAxis stroke="white" />
+ 
+  <Bar
+    dataKey="count"
+    fill="#f8f8f7ff"
+    isAnimationActive={false}
+    barSize={30}
+  />
+</BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -712,7 +720,7 @@ const JobApplicationHistory: React.FC = () => {
                     <div className="flex justify-between items-center text-sm text-gray-600">
                       <div>
                         Company: {job.companyName || 'Unknown Company'}<br />
-                        {/* Location: {job.location || 'Ahmedabad'} */}
+                        {/* Location: {job.location || 'Unknown'} */}
                       </div>
                       
                       <div className="flex items-center gap-1">
