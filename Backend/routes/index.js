@@ -5,7 +5,7 @@ import contactRoutes from './contactRoutes.js';
 import inputRoutes from './inputRoutes.js';
 import radiobuttonRoutes from './radiobuttonRoutes.js'; // Make sure this file exists
 import appliedJobRoutes from './appliedJobRoutes.js';
-import formConfigRoutes from './formConfigRoutes.js';;
+import formConfigRoutes from './formConfigRoutes.js';
 import express from 'express';
 const router = express.Router();
 
