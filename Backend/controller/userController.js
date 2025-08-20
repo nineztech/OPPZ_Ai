@@ -149,7 +149,7 @@ const sendPasswordResetEmail = async (email, resetToken, firstname) => {
     const transporter = createTransporter();
     
     // Create reset URL - adjust this based on your frontend URL
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://www.oppzai.com'}/reset-password?token=${resetToken}`;
     
     const mailOptions = {
       from: `OPPZ AI <${process.env.EMAIL_USER}>`,
