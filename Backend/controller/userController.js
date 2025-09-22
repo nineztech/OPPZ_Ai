@@ -36,33 +36,77 @@ const createTransporter = () => {
     console.log('Creating email transporter...');
     console.log('EMAIL_USER:', process.env.EMAIL_USER);
     console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set (length: ' + process.env.EMAIL_PASS.length + ')' : 'Not set');
+    console.log('EMAIL_SERVICE:', process.env.EMAIL_SERVICE || 'godaddy');
     
     // Check if environment variables are set
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       throw new Error('EMAIL_USER and EMAIL_PASS environment variables are required');
     }
     
-    const transporter = nodemailer.createTransporter({
-      host: 'smtpout.secureserver.net',
-      port: 587, // Changed from 465 to 587 for better compatibility
-      secure: false, // Changed to false for port 587
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
-        ciphers: 'SSLv3' // Add specific cipher for GoDaddy
-      },
-      connectionTimeout: 60000, // 60 seconds
-      greetingTimeout: 30000, // 30 seconds  
-      socketTimeout: 60000, // 60 seconds
-      logger: process.env.NODE_ENV === 'development',
-      debug: process.env.NODE_ENV === 'development'
-    });
+    let transporterConfig;
     
-    console.log('Transporter created successfully');
+    // Gmail configuration (recommended for production)
+    if (process.env.EMAIL_SERVICE === 'gmail') {
+      transporterConfig = {
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS, // Use app-specific password
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      };
+    }
+    // SendGrid configuration
+    else if (process.env.EMAIL_SERVICE === 'sendgrid') {
+      transporterConfig = {
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        secure: false,
+        auth: {
+          user: 'apikey',
+          pass: process.env.SENDGRID_API_KEY,
+        },
+      };
+    }
+    // Outlook/Hotmail configuration
+    else if (process.env.EMAIL_SERVICE === 'outlook') {
+      transporterConfig = {
+        service: 'hotmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      };
+    }
+    // Improved GoDaddy configuration
+    else {
+      transporterConfig = {
+        host: 'smtpout.secureserver.net',
+        port: 587, // Use 587 instead of 465 for better compatibility
+        secure: false, // false for 587, true for 465
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+        tls: {
+          rejectUnauthorized: false,
+          ciphers: 'SSLv3'
+        },
+        connectionTimeout: 60000, // 60 seconds
+        greetingTimeout: 30000,   // 30 seconds  
+        socketTimeout: 60000,     // 60 seconds
+        logger: process.env.NODE_ENV === 'development',
+        debug: process.env.NODE_ENV === 'development'
+      };
+    }
+    
+    const transporter = nodemailer.createTransporter(transporterConfig);
+    
+    console.log('Transporter created successfully with service:', process.env.EMAIL_SERVICE || 'godaddy');
     return transporter;
+    
   } catch (error) {
     console.error('Error creating transporter:', error);
     throw error;
