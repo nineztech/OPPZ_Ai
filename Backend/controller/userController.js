@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
-import { Op } from 'sequelize'; // ADD THIS IMPORT - Missing Sequelize operators
 
 // In-memory OTP storage
 const otpStorage = new Map();
@@ -37,83 +36,29 @@ const createTransporter = () => {
     console.log('Creating email transporter...');
     console.log('EMAIL_USER:', process.env.EMAIL_USER);
     console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set (length: ' + process.env.EMAIL_PASS.length + ')' : 'Not set');
-    console.log('EMAIL_SERVICE:', process.env.EMAIL_SERVICE || 'godaddy');
     
-    // Check if environment variables are set
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('EMAIL_USER and EMAIL_PASS environment variables are required');
-    }
+    const transporter = nodemailer.createTransport({
+      host: 'smtpout.secureserver.net',
+      port: 465,
+      secure: true, // Use SSL
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      logger: true,
+      debug: true
+    });
     
-    let transporterConfig;
-    
-    // Gmail configuration (recommended for production)
-    if (process.env.EMAIL_SERVICE === 'gmail') {
-      transporterConfig = {
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS, // Use app-specific password
-        },
-        tls: {
-          rejectUnauthorized: false
-        }
-      };
-    }
-    // SendGrid configuration
-    else if (process.env.EMAIL_SERVICE === 'sendgrid') {
-      transporterConfig = {
-        host: 'smtp.sendgrid.net',
-        port: 587,
-        secure: false,
-        auth: {
-          user: 'apikey',
-          pass: process.env.SENDGRID_API_KEY,
-        },
-      };
-    }
-    // Outlook/Hotmail configuration
-    else if (process.env.EMAIL_SERVICE === 'outlook') {
-      transporterConfig = {
-        service: 'hotmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      };
-    }
-    // Improved GoDaddy configuration
-    else {
-      transporterConfig = {
-        host: 'smtpout.secureserver.net',
-        port: 587, // Use 587 instead of 465 for better compatibility
-        secure: false, // false for 587, true for 465
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-        tls: {
-          rejectUnauthorized: false,
-          ciphers: 'SSLv3'
-        },
-        connectionTimeout: 60000, // 60 seconds
-        greetingTimeout: 30000,   // 30 seconds  
-        socketTimeout: 60000,     // 60 seconds
-        logger: process.env.NODE_ENV === 'development',
-        debug: process.env.NODE_ENV === 'development'
-      };
-    }
-    
-    const transporter = nodemailer.createTransporter(transporterConfig);
-    
-    console.log('Transporter created successfully with service:', process.env.EMAIL_SERVICE || 'godaddy');
+    console.log('Transporter created successfully');
     return transporter;
-    
   } catch (error) {
     console.error('Error creating transporter:', error);
     throw error;
   }
 };
-
 
 // Generate JWT Token
 const generateToken = (user) => {
@@ -204,7 +149,7 @@ const sendPasswordResetEmail = async (email, resetToken, firstname) => {
     const transporter = createTransporter();
     
     // Create reset URL - adjust this based on your frontend URL
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://www.oppzai.com'}/reset-password?token=${resetToken}`;
     
     const mailOptions = {
       from: `OPPZ AI <${process.env.EMAIL_USER}>`,
@@ -605,12 +550,6 @@ export const sendOTP = async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'Please enter a valid email address' });
-    }
-
     // Check if user already exists
     const userExists = await User.findOne({ where: { email } });
     if (userExists) {
@@ -635,54 +574,35 @@ export const sendOTP = async (req, res) => {
     });
     console.log('OTP stored in memory for email:', email);
 
-    // Try to send OTP email
-    try {
-      console.log('Attempting to send OTP email...');
-      await sendOTPEmail(email, otp, firstname);
-      console.log('OTP email sent successfully');
+    // Send OTP email
+    console.log('Attempting to send OTP email...');
+    await sendOTPEmail(email, otp, firstname);
+    console.log('OTP email sent successfully');
 
-      res.status(200).json({
-        message: 'OTP sent successfully to your email',
-        email: email
-      });
-
-    } catch (emailError) {
-      console.error('Email sending failed:', emailError);
-      
-      // Clean up stored OTP if email fails
-      otpStorage.delete(email);
-      
-      // Provide specific error messages based on error type
-      let errorMessage = 'Failed to send OTP email. Please try again.';
-      
-      if (emailError.code === 'EAUTH') {
-        errorMessage = 'Email authentication failed. Please contact support.';
-      } else if (emailError.code === 'ECONNECTION' || emailError.code === 'ECONNREFUSED') {
-        errorMessage = 'Could not connect to email server. Please try again later.';
-      } else if (emailError.code === 'EMESSAGE') {
-        errorMessage = 'Invalid email format. Please contact support.';
-      } else if (emailError.message.includes('Invalid login')) {
-        errorMessage = 'Email service configuration error. Please contact support.';
-      }
-      
-      return res.status(500).json({ 
-        message: errorMessage,
-        error: process.env.NODE_ENV === 'development' ? emailError.message : undefined
-      });
-    }
+    res.status(200).json({
+      message: 'OTP sent successfully to your email',
+      email: email
+    });
 
   } catch (error) {
     console.error('Send OTP error:', {
       message: error.message,
       stack: error.stack,
-      name: error.name,
-      code: error.code
+      name: error.name
     });
     
-    res.status(500).json({ 
-      message: 'Server error during OTP generation. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    // Provide more specific error messages
+    let errorMessage = 'Failed to send OTP. Please try again.';
+    
+    if (error.code === 'EAUTH') {
+      errorMessage = 'Email authentication failed. Please check email configuration.';
+    } else if (error.code === 'ECONNECTION') {
+      errorMessage = 'Could not connect to email server. Please try again later.';
+    } else if (error.code === 'EMESSAGE') {
+      errorMessage = 'Invalid email message. Please contact support.';
+    }
+    
+    res.status(500).json({ message: errorMessage });
   }
 };
 
@@ -888,379 +808,5 @@ export const register = async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error during registration' });
-  }
-};
-
-// @desc    Get all users (Admin only)
-// @route   GET /api/users/all
-// @access  Private/Admin
-export const getAllUsers = async (req, res) => {
-  try {
-    console.log('📋 Admin fetching all users...');
-
-    // Get all users with basic information
-    const users = await User.findAll({
-      attributes: [
-        'id', 
-        'firstname', 
-        'lastname', 
-        'email', 
-        'Phone', 
-        'createdAt', 
-        'updatedAt'
-      ],
-      order: [['createdAt', 'DESC']] // Most recent first
-    });
-
-    console.log(`✅ Found ${users.length} users`);
-
-    // Calculate some basic stats
-    const stats = {
-      totalUsers: users.length,
-      newThisWeek: users.filter(user => {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(user.createdAt) > weekAgo;
-      }).length,
-      newToday: users.filter(user => {
-        const today = new Date();
-        return new Date(user.createdAt).toDateString() === today.toDateString();
-      }).length
-    };
-
-    res.status(200).json({
-      success: true,
-      message: 'Users fetched successfully',
-      users,
-      stats,
-      count: users.length
-    });
-
-  } catch (error) {
-    console.error('💥 Get all users error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to fetch users',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// @desc    Get user by ID (Admin only)
-// @route   GET /api/users/:id
-// @access  Private/Admin
-export const getUserById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    console.log('🔍 Admin fetching user by ID:', id);
-
-    const user = await User.findByPk(id, {
-      attributes: [
-        'id', 
-        'firstname', 
-        'lastname', 
-        'email', 
-        'Phone', 
-        'createdAt', 
-        'updatedAt'
-      ]
-    });
-
-    if (!user) {
-      console.log('❌ User not found with ID:', id);
-      return res.status(404).json({ 
-        success: false,
-        message: 'User not found' 
-      });
-    }
-
-    console.log('✅ User found:', user.email);
-
-    res.status(200).json({
-      success: true,
-      message: 'User fetched successfully',
-      user
-    });
-
-  } catch (error) {
-    console.error('💥 Get user by ID error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to fetch user',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// @desc    Delete user (Admin only)
-// @route   DELETE /api/users/:id
-// @access  Private/Admin
-export const deleteUser = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    console.log('🗑️ Admin attempting to delete user with ID:', id);
-
-    // Check if user exists
-    const user = await User.findByPk(id);
-    if (!user) {
-      console.log('❌ User not found with ID:', id);
-      return res.status(404).json({ 
-        success: false,
-        message: 'User not found' 
-      });
-    }
-
-    console.log('👤 User to delete:', {
-      id: user.id,
-      email: user.email,
-      name: `${user.firstname} ${user.lastname}`
-    });
-
-    // Delete the user
-    await user.destroy();
-
-    console.log('✅ User deleted successfully');
-
-    res.status(200).json({
-      success: true,
-      message: 'User deleted successfully',
-      deletedUser: {
-        id: user.id,
-        email: user.email,
-        name: `${user.firstname} ${user.lastname}`
-      }
-    });
-
-  } catch (error) {
-    console.error('💥 Delete user error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to delete user',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// @desc    Update user status (Admin only)
-// @route   PUT /api/users/:id/status
-// @access  Private/Admin
-export const updateUserStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, reason } = req.body;
-
-    console.log('🔄 Admin updating user status:', {
-      userId: id,
-      newStatus: status,
-      reason
-    });
-
-    // Validate status
-    const validStatuses = ['active', 'inactive', 'suspended', 'banned'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
-      });
-    }
-
-    // Find user
-    const user = await User.findByPk(id);
-    if (!user) {
-      console.log('❌ User not found with ID:', id);
-      return res.status(404).json({ 
-        success: false,
-        message: 'User not found' 
-      });
-    }
-
-    // Update user status (you may need to add a status field to your User model)
-    await user.update({ 
-      status,
-      statusReason: reason,
-      statusUpdatedAt: new Date(),
-      statusUpdatedBy: req.admin?.id // Assuming you have admin info in req.admin
-    });
-
-    console.log('✅ User status updated successfully');
-
-    res.status(200).json({
-      success: true,
-      message: 'User status updated successfully',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: `${user.firstname} ${user.lastname}`,
-        status,
-        statusReason: reason
-      }
-    });
-
-  } catch (error) {
-    console.error('💥 Update user status error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to update user status',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// @desc    Get user statistics (Admin only)
-// @route   GET /api/users/stats
-// @access  Private/Admin
-export const getUserStats = async (req, res) => {
-  try {
-    console.log('📊 Admin fetching user statistics...');
-
-    // Get all users for stats calculation
-    const users = await User.findAll({
-      attributes: ['id', 'createdAt', 'updatedAt']
-    });
-
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const thisYear = new Date(now.getFullYear(), 0, 1);
-
-    const stats = {
-      totalUsers: users.length,
-      newToday: users.filter(user => new Date(user.createdAt) >= today).length,
-      newThisWeek: users.filter(user => new Date(user.createdAt) >= thisWeek).length,
-      newThisMonth: users.filter(user => new Date(user.createdAt) >= thisMonth).length,
-      newThisYear: users.filter(user => new Date(user.createdAt) >= thisYear).length,
-      activeToday: users.filter(user => new Date(user.updatedAt) >= today).length,
-      
-      // Registration trends (last 7 days)
-      registrationTrend: [],
-      
-      // Monthly breakdown
-      monthlyStats: {}
-    };
-
-    // Calculate daily registration trend for the last 7 days
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-      
-      const count = users.filter(user => {
-        const createdAt = new Date(user.createdAt);
-        return createdAt >= startOfDay && createdAt < endOfDay;
-      }).length;
-
-      stats.registrationTrend.push({
-        date: startOfDay.toISOString().split('T')[0],
-        count
-      });
-    }
-
-    // Calculate monthly stats for the current year
-    for (let month = 0; month < 12; month++) {
-      const monthStart = new Date(now.getFullYear(), month, 1);
-      const monthEnd = new Date(now.getFullYear(), month + 1, 1);
-      
-      const count = users.filter(user => {
-        const createdAt = new Date(user.createdAt);
-        return createdAt >= monthStart && createdAt < monthEnd;
-      }).length;
-
-      stats.monthlyStats[monthStart.toLocaleString('default', { month: 'long' })] = count;
-    }
-
-    console.log('✅ User statistics calculated successfully');
-
-    res.status(200).json({
-      success: true,
-      message: 'User statistics fetched successfully',
-      stats
-    });
-
-  } catch (error) {
-    console.error('💥 Get user stats error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to fetch user statistics',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// @desc    Search users (Admin only)
-// @route   GET /api/users/search?q=searchterm
-// @access  Private/Admin
-export const searchUsers = async (req, res) => {
-  try {
-    const { q, page = 1, limit = 10 } = req.query;
-
-    console.log('🔍 Admin searching users with query:', q);
-
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'Search query must be at least 2 characters long'
-      });
-    }
-
-    const offset = (page - 1) * limit;
-
-    // Search users by firstname, lastname, email, or phone
-    const { rows: users, count } = await User.findAndCountAll({
-      where: {
-        [Op.or]: [
-          { firstname: { [Op.iLike]: `%${q}%` } },
-          { lastname: { [Op.iLike]: `%${q}%` } },
-          { email: { [Op.iLike]: `%${q}%` } },
-          { Phone: { [Op.iLike]: `%${q}%` } }
-        ]
-      },
-      attributes: [
-        'id', 
-        'firstname', 
-        'lastname', 
-        'email', 
-        'Phone', 
-        'createdAt', 
-        'updatedAt'
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
-    });
-
-    console.log(`✅ Found ${count} users matching search query`);
-
-    res.status(200).json({
-      success: true,
-      message: 'Search completed successfully',
-      users,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(count / limit),
-        totalUsers: count,
-        limit: parseInt(limit)
-      }
-    });
-
-  } catch (error) {
-    console.error('💥 Search users error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to search users',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
   }
 };
