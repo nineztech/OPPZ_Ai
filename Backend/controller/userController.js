@@ -34,47 +34,12 @@ const cleanExpiredResetTokens = () => {
 const createTransporter = () => {
   try {
     console.log('Creating email transporter...');
-    console.log('EMAIL_USER:', process.env.EMAIL_USER);
-    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set (length: ' + process.env.EMAIL_PASS.length + ')' : 'Not set');
     
-    // Try primary configuration first
+    // Primary configuration - try port 587 with STARTTLS
     const transporter = nodemailer.createTransporter({
       host: 'smtpout.secureserver.net',
-      port: 587, // Try port 587 instead of 465
-      secure: false, // Use STARTTLS instead of SSL
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
-        ciphers: 'SSLv3'
-      },
-      connectionTimeout: 60000, // 60 seconds
-      greetingTimeout: 30000, // 30 seconds
-      socketTimeout: 60000, // 60 seconds
-      logger: true,
-      debug: true
-    });
-    
-    console.log('Transporter created successfully');
-    return transporter;
-  } catch (error) {
-    console.error('Error creating transporter:', error);
-    throw error;
-  }
-};
-
-// Alternative configuration function to try if primary fails
-const createAlternativeTransporter = () => {
-  try {
-    console.log('Trying alternative SMTP configuration...');
-    
-    // Alternative 1: Different port and security settings
-    const transporter = nodemailer.createTransporter({
-      host: 'smtpout.secureserver.net',
-      port: 25, // Try port 25
-      secure: false,
+      port: 587,
+      secure: false, // Use STARTTLS
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -82,17 +47,52 @@ const createAlternativeTransporter = () => {
       tls: {
         rejectUnauthorized: false
       },
-      connectionTimeout: 60000,
+      connectionTimeout: 30000, // 30 seconds
       greetingTimeout: 30000,
-      socketTimeout: 60000,
-      requireTLS: true
+      socketTimeout: 30000,
+      logger: false, // Disable detailed logging to reduce noise
+      debug: false
     });
     
     return transporter;
   } catch (error) {
-    console.error('Error creating alternative transporter:', error);
+    console.error('Error creating transporter:', error);
     throw error;
   }
+};
+
+// Alternative configuration
+const createAlternativeTransporter = () => {
+  return nodemailer.createTransporter({
+    host: 'relay-hosting.secureserver.net', // Alternative GoDaddy SMTP
+    port: 25,
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000
+  });
+};
+
+// Gmail backup (if you have Gmail credentials)
+const createGmailBackup = () => {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    return null;
+  }
+  
+  return nodemailer.createTransporter({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  });
 };
 
 
@@ -117,102 +117,86 @@ const generateResetToken = () => {
 
 // Send OTP Email with better error handling
 const sendOTPEmail = async (email, otp, firstname) => {
-  const maxRetries = 3;
-  let lastError;
+  const transporters = [
+    { name: 'GoDaddy Primary', transporter: createTransporter() },
+    { name: 'GoDaddy Alternative', transporter: createAlternativeTransporter() }
+  ];
 
-  // Try primary transporter
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`🚀 Attempt ${attempt}: Sending OTP email to: ${email}`);
-      
-      const transporter = createTransporter();
-      
-      // Test connection first
-      await transporter.verify();
-      console.log('✅ SMTP connection verified');
-      
-      const mailOptions = {
-        from: `OPPZ AI <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'OPPZ AI - Email Verification Code',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-              <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to OPPZ AI!</h1>
-            </div>
-            
-            <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
-              <h2 style="color: #333; margin-bottom: 20px;">Hi ${firstname},</h2>
-               
-              <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 25px;">
-                Thank you for signing up! To complete your registration and verify your email address, please use the verification OTP below:
-              </p>
-              
-              <div style="background: white; border: 2px dashed #667eea; padding: 20px; text-align: center; margin: 25px 0; border-radius: 8px;">
-                <h1 style="color: #667eea; font-size: 32px; margin: 0; letter-spacing: 5px; font-weight: bold;">${otp}</h1>
-              </div>
-              
-              <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
-                This OTP will expire in <strong>60 Seconds</strong> for security reasons.
-              </p>
-              
-              <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0; border-radius: 4px;">
-                <p style="color: #1976d2; margin: 0; font-size: 14px;">
-                  <strong>Security Notice:</strong> If you didn't request this verification OTP, please ignore this email or contact our support team.
-                </p>
-              </div>
-              
-              <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                Best regards,<br>
-                <strong>The OPPZ AI Team</strong>
-              </p>
-            </div>
-            
-            <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-              <p>© 2025 OPPZ AI. All rights reserved.</p>
-            </div>
+  // Add Gmail backup if available
+  const gmailTransporter = createGmailBackup();
+  if (gmailTransporter) {
+    transporters.push({ name: 'Gmail Backup', transporter: gmailTransporter });
+  }
+
+  const mailOptions = {
+    from: `OPPZ AI <${process.env.EMAIL_USER || 'noreply@oppzai.com'}>`,
+    to: email,
+    subject: 'OPPZ AI - Email Verification Code',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to OPPZ AI!</h1>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
+          <h2 style="color: #333; margin-bottom: 20px;">Hi ${firstname},</h2>
+           
+          <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 25px;">
+            Thank you for signing up! To complete your registration and verify your email address, please use the verification OTP below:
+          </p>
+          
+          <div style="background: white; border: 2px dashed #667eea; padding: 20px; text-align: center; margin: 25px 0; border-radius: 8px;">
+            <h1 style="color: #667eea; font-size: 32px; margin: 0; letter-spacing: 5px; font-weight: bold;">${otp}</h1>
           </div>
-        `,
-      };
+          
+          <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+            This OTP will expire in <strong>60 Seconds</strong> for security reasons.
+          </p>
+          
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            Best regards,<br>
+            <strong>The OPPZ AI Team</strong>
+          </p>
+        </div>
+      </div>
+    `,
+  };
 
-      const result = await transporter.sendMail(mailOptions);
-      console.log('✅ Email sent successfully! Message ID:', result.messageId);
+  let lastError;
+  
+  for (const { name, transporter } of transporters) {
+    try {
+      console.log(`Trying ${name}...`);
+      
+      // Quick connection test with timeout
+      await Promise.race([
+        transporter.verify(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection test timeout')), 10000)
+        )
+      ]);
+      
+      console.log(`${name} connection verified`);
+      
+      // Send email with timeout
+      const result = await Promise.race([
+        transporter.sendMail(mailOptions),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Send timeout')), 15000)
+        )
+      ]);
+      
+      console.log(`Email sent successfully via ${name}! Message ID:`, result.messageId);
       return result;
       
     } catch (error) {
-      console.error(`❌ Attempt ${attempt} failed:`, error);
+      console.error(`${name} failed:`, error.message);
       lastError = error;
-      
-      if (attempt < maxRetries) {
-        console.log(`⏳ Waiting 2 seconds before retry...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
+      continue;
     }
   }
-
-  // Try alternative transporter if primary fails
-  try {
-    console.log('🔄 Trying alternative SMTP configuration...');
-    const altTransporter = createAlternativeTransporter();
-    await altTransporter.verify();
-    
-    const mailOptions = {
-      from: `OPPZ AI <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'OPPZ AI - Email Verification Code',
-      html: `[Same HTML template as above]`
-    };
-
-    const result = await altTransporter.sendMail(mailOptions);
-    console.log('✅ Alternative email sent successfully! Message ID:', result.messageId);
-    return result;
-    
-  } catch (altError) {
-    console.error('❌ Alternative transporter also failed:', altError);
-  }
-
-  // If all attempts fail, throw the last error
-  throw lastError;
+  
+  throw lastError || new Error('All email transporters failed');
 };
 
 // Send Password Reset Email
@@ -614,21 +598,34 @@ export const validateResetToken = async (req, res) => {
 // @access  Public
 export const sendOTP = async (req, res) => {
   try {
-    console.log('SendOTP endpoint called with body:', req.body);
+    console.log('SendOTP endpoint called');
     
     const { firstname, lastname, email, Phone, password } = req.body;
 
     // Validate required fields
     if (!firstname || !lastname || !email || !Phone || !password) {
-      console.log('Validation failed: Missing required fields');
-      return res.status(400).json({ message: 'All fields are required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'All fields are required' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Please enter a valid email address' 
+      });
     }
 
     // Check if user already exists
     const userExists = await User.findOne({ where: { email } });
     if (userExists) {
-      console.log('User already exists with email:', email);
-      return res.status(400).json({ message: 'User already exists with this email' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'User already exists with this email' 
+      });
     }
 
     // Clean up expired OTPs
@@ -637,7 +634,6 @@ export const sendOTP = async (req, res) => {
     // Generate OTP
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 60 * 1000); // 1 minute
-    console.log('Generated OTP:', otp);
 
     // Store OTP and user data in memory
     otpStorage.set(email, {
@@ -646,37 +642,82 @@ export const sendOTP = async (req, res) => {
       userData: { firstname, lastname, email, Phone, password },
       attempts: 0
     });
-    console.log('OTP stored in memory for email:', email);
 
-    // Send OTP email
-    console.log('Attempting to send OTP email...');
-    await sendOTPEmail(email, otp, firstname);
-    console.log('OTP email sent successfully');
+    console.log('OTP stored, attempting to send email...');
 
+    try {
+      // Try to send OTP email
+      await sendOTPEmail(email, otp, firstname);
+      
+      console.log('OTP email sent successfully');
+      res.status(200).json({
+        success: true,
+        message: 'OTP sent successfully to your email',
+        email: email
+      });
+
+    } catch (emailError) {
+      console.error('All email attempts failed:', emailError.message);
+      
+      // Clean up stored OTP if email fails
+      otpStorage.delete(email);
+      
+      // Return user-friendly error message
+      res.status(500).json({ 
+        success: false,
+        message: 'Unable to send verification email at this time. Please try again later or contact support.',
+        error: process.env.NODE_ENV === 'development' ? emailError.message : undefined
+      });
+    }
+
+  } catch (error) {
+    console.error('SendOTP error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during OTP generation. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+export const sendOTPDev = async (req, res) => {
+  try {
+    const { firstname, lastname, email, Phone, password } = req.body;
+
+    // Same validations...
+    if (!firstname || !lastname || !email || !Phone || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const userExists = await User.findOne({ where: { email } });
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    cleanExpiredOTPs();
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 60 * 1000);
+
+    otpStorage.set(email, {
+      otp,
+      expiresAt,
+      userData: { firstname, lastname, email, Phone, password },
+      attempts: 0
+    });
+
+    // For development - skip email sending
+    console.log(`DEVELOPMENT MODE: OTP for ${email} is: ${otp}`);
+    
     res.status(200).json({
-      message: 'OTP sent successfully to your email',
-      email: email
+      success: true,
+      message: 'OTP generated (check console in development)',
+      email: email,
+      developmentOTP: otp // Remove this in production!
     });
 
   } catch (error) {
-    console.error('Send OTP error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
-    // Provide more specific error messages
-    let errorMessage = 'Failed to send OTP. Please try again.';
-    
-    if (error.code === 'EAUTH') {
-      errorMessage = 'Email authentication failed. Please check email configuration.';
-    } else if (error.code === 'ECONNECTION') {
-      errorMessage = 'Could not connect to email server. Please try again later.';
-    } else if (error.code === 'EMESSAGE') {
-      errorMessage = 'Invalid email message. Please contact support.';
-    }
-    
-    res.status(500).json({ message: errorMessage });
+    console.error('SendOTP Dev error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
