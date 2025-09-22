@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import { Op } from 'sequelize'; // ADD THIS IMPORT - Missing Sequelize operators
 
 // In-memory OTP storage
 const otpStorage = new Map();
@@ -890,9 +891,6 @@ export const register = async (req, res) => {
   }
 };
 
-
-// Add these functions to your userController.js file
-
 // @desc    Get all users (Admin only)
 // @route   GET /api/users/all
 // @access  Private/Admin
@@ -1093,7 +1091,7 @@ export const updateUserStatus = async (req, res) => {
       status,
       statusReason: reason,
       statusUpdatedAt: new Date(),
-      statusUpdatedBy: req.admin.id // Assuming you have admin info in req.admin
+      statusUpdatedBy: req.admin?.id // Assuming you have admin info in req.admin
     });
 
     console.log('✅ User status updated successfully');
