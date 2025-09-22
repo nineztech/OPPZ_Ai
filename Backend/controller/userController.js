@@ -37,19 +37,28 @@ const createTransporter = () => {
     console.log('EMAIL_USER:', process.env.EMAIL_USER);
     console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set (length: ' + process.env.EMAIL_PASS.length + ')' : 'Not set');
     
-    const transporter = nodemailer.createTransport({
+    // Check if environment variables are set
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      throw new Error('EMAIL_USER and EMAIL_PASS environment variables are required');
+    }
+    
+    const transporter = nodemailer.createTransporter({
       host: 'smtpout.secureserver.net',
-      port: 465,
-      secure: true, // Use SSL
+      port: 587, // Changed from 465 to 587 for better compatibility
+      secure: false, // Changed to false for port 587
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
       tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        ciphers: 'SSLv3' // Add specific cipher for GoDaddy
       },
-      logger: true,
-      debug: true
+      connectionTimeout: 60000, // 60 seconds
+      greetingTimeout: 30000, // 30 seconds  
+      socketTimeout: 60000, // 60 seconds
+      logger: process.env.NODE_ENV === 'development',
+      debug: process.env.NODE_ENV === 'development'
     });
     
     console.log('Transporter created successfully');
