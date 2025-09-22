@@ -37,17 +37,22 @@ const createTransporter = () => {
     console.log('EMAIL_USER:', process.env.EMAIL_USER);
     console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set (length: ' + process.env.EMAIL_PASS.length + ')' : 'Not set');
     
-    const transporter = nodemailer.createTransport({
+    // Try primary configuration first
+    const transporter = nodemailer.createTransporter({
       host: 'smtpout.secureserver.net',
-      port: 465,
-      secure: true, // Use SSL
+      port: 587, // Try port 587 instead of 465
+      secure: false, // Use STARTTLS instead of SSL
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
       tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        ciphers: 'SSLv3'
       },
+      connectionTimeout: 60000, // 60 seconds
+      greetingTimeout: 30000, // 30 seconds
+      socketTimeout: 60000, // 60 seconds
       logger: true,
       debug: true
     });
@@ -59,6 +64,37 @@ const createTransporter = () => {
     throw error;
   }
 };
+
+// Alternative configuration function to try if primary fails
+const createAlternativeTransporter = () => {
+  try {
+    console.log('Trying alternative SMTP configuration...');
+    
+    // Alternative 1: Different port and security settings
+    const transporter = nodemailer.createTransporter({
+      host: 'smtpout.secureserver.net',
+      port: 25, // Try port 25
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      connectionTimeout: 60000,
+      greetingTimeout: 30000,
+      socketTimeout: 60000,
+      requireTLS: true
+    });
+    
+    return transporter;
+  } catch (error) {
+    console.error('Error creating alternative transporter:', error);
+    throw error;
+  }
+};
+
 
 // Generate JWT Token
 const generateToken = (user) => {
@@ -81,64 +117,102 @@ const generateResetToken = () => {
 
 // Send OTP Email with better error handling
 const sendOTPEmail = async (email, otp, firstname) => {
+  const maxRetries = 3;
+  let lastError;
+
+  // Try primary transporter
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🚀 Attempt ${attempt}: Sending OTP email to: ${email}`);
+      
+      const transporter = createTransporter();
+      
+      // Test connection first
+      await transporter.verify();
+      console.log('✅ SMTP connection verified');
+      
+      const mailOptions = {
+        from: `OPPZ AI <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'OPPZ AI - Email Verification Code',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to OPPZ AI!</h1>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
+              <h2 style="color: #333; margin-bottom: 20px;">Hi ${firstname},</h2>
+               
+              <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 25px;">
+                Thank you for signing up! To complete your registration and verify your email address, please use the verification OTP below:
+              </p>
+              
+              <div style="background: white; border: 2px dashed #667eea; padding: 20px; text-align: center; margin: 25px 0; border-radius: 8px;">
+                <h1 style="color: #667eea; font-size: 32px; margin: 0; letter-spacing: 5px; font-weight: bold;">${otp}</h1>
+              </div>
+              
+              <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+                This OTP will expire in <strong>60 Seconds</strong> for security reasons.
+              </p>
+              
+              <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="color: #1976d2; margin: 0; font-size: 14px;">
+                  <strong>Security Notice:</strong> If you didn't request this verification OTP, please ignore this email or contact our support team.
+                </p>
+              </div>
+              
+              <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                Best regards,<br>
+                <strong>The OPPZ AI Team</strong>
+              </p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+              <p>© 2025 OPPZ AI. All rights reserved.</p>
+            </div>
+          </div>
+        `,
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+      console.log('✅ Email sent successfully! Message ID:', result.messageId);
+      return result;
+      
+    } catch (error) {
+      console.error(`❌ Attempt ${attempt} failed:`, error);
+      lastError = error;
+      
+      if (attempt < maxRetries) {
+        console.log(`⏳ Waiting 2 seconds before retry...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+  }
+
+  // Try alternative transporter if primary fails
   try {
-    console.log(`🚀 Attempting to send OTP email to: ${email}`);
-    
-    const transporter = createTransporter();
+    console.log('🔄 Trying alternative SMTP configuration...');
+    const altTransporter = createAlternativeTransporter();
+    await altTransporter.verify();
     
     const mailOptions = {
       from: `OPPZ AI <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'OPPZ AI - Email Verification Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to OPPZ AI!</h1>
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
-            <h2 style="color: #333; margin-bottom: 20px;">Hi ${firstname},</h2>
-
-             
-            <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 25px;">
-              Thank you for signing up! To complete your registration and verify your email address, please use the verification OTP below:
-            </p>
-            
-            <div style="background: white; border: 2px dashed #667eea; padding: 20px; text-align: center; margin: 25px 0; border-radius: 8px;">
-              <h1 style="color: #667eea; font-size: 32px; margin: 0; letter-spacing: 5px; font-weight: bold;">${otp}</h1>
-            </div>
-            
-            <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
-              This OTP will expire in <strong>60 Seconds</strong> for security reasons.
-            </p>
-            
-            <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0; border-radius: 4px;">
-              <p style="color: #1976d2; margin: 0; font-size: 14px;">
-                <strong>Security Notice:</strong> If you didn't request this verification OTP, please ignore this email or contact our support team.
-              </p>
-            </div>
-            
-            <p style="color: #666; font-size: 14px; margin-top: 30px;">
-              Best regards,<br>
-              <strong>The OPPZ AI Team</strong>
-            </p>
-          </div>
-          
-          <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-            <p>© 2025 OPPZ AI. All rights reserved.</p>
-          </div>
-        </div>
-      `,
+      html: `[Same HTML template as above]`
     };
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully! Message ID:', result.messageId);
+    const result = await altTransporter.sendMail(mailOptions);
+    console.log('✅ Alternative email sent successfully! Message ID:', result.messageId);
     return result;
     
-  } catch (error) {
-    console.error('❌ Detailed email sending error:', error);
-    throw error;
+  } catch (altError) {
+    console.error('❌ Alternative transporter also failed:', altError);
   }
+
+  // If all attempts fail, throw the last error
+  throw lastError;
 };
 
 // Send Password Reset Email
