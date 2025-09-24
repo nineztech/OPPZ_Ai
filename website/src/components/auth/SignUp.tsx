@@ -61,7 +61,17 @@ const sendMessageToExtension = (message: any, callback?: (res: any) => void) => 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
- 
+ React.useEffect(() => {
+    const socket = new WebSocket(process.env.REACT_APP_WS_URL as string);
+
+
+    socket.onopen = () => console.log('✅ WebSocket connected');
+    socket.onmessage = (event) => console.log('📩 Message from server:', event.data);
+    socket.onclose = () => console.log('❌ WebSocket closed');
+    socket.onerror = (err) => console.error('⚠️ WebSocket error', err);
+
+    return () => socket.close();
+  }, []);
   const [formData, setFormData] = useState<SignUpFormData>({
     firstname: '',
     lastname: '',
