@@ -32,22 +32,33 @@ const cleanExpiredResetTokens = () => {
 
 // Email transporter configuration with better error handling
 const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: 'smtpout.secureserver.net',
-    port: 587,
-    secure: false,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    authMethod: 'LOGIN',
-    tls: { rejectUnauthorized: false },
-    logger: true,
-    debug: true
-  });
+  try {
+    console.log('Creating email transporter...');
+    console.log('EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set (length: ' + process.env.EMAIL_PASS.length + ')' : 'Not set');
+    
+    const transporter = nodemailer.createTransport({
+      host: 'smtpout.secureserver.net',
+      port: 465,
+      secure: true, // Use SSL
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      logger: true,
+      debug: true
+    });
+    
+    console.log('Transporter created successfully');
+    return transporter;
+  } catch (error) {
+    console.error('Error creating transporter:', error);
+    throw error;
+  }
 };
-
-
 
 // Generate JWT Token
 const generateToken = (user) => {
